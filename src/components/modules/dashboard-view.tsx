@@ -10,22 +10,18 @@ import {
   FileWarning,
   ClipboardCheck,
   UserCog,
-  ArrowUpRight,
   Wrench,
   ShieldCheck,
   Building2,
   CheckCircle2,
-  TrendingUp,
   Activity,
   HeartPulse,
   GraduationCap,
-  Calendar,
   CalendarDays,
   MapPin,
   HardHat,
   Tent,
   RotateCcw,
-  Filter,
 } from 'lucide-react'
 import {
   BarChart,
@@ -38,7 +34,7 @@ import {
   Pie,
   Cell,
 } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -179,61 +175,81 @@ interface StatCardProps {
   title: string
   icon: React.ElementType
   iconBg: string
-  iconColor: string
   bigNumber: string
   unit?: string
   subtitle?: string
   segments: { label: string; value: number; color: string }[]
 }
 
-function StatCard({ title, icon: Icon, iconBg, iconColor, bigNumber, unit, subtitle, segments }: StatCardProps) {
+// Soft tint pairs for the header icon chip, keyed off the solid `bg-<hue>-500`
+// class the call sites already pass. Literal class names so Tailwind picks them up.
+const STAT_ACCENTS: Record<string, { chip: string; icon: string }> = {
+  teal: { chip: 'bg-teal-50', icon: 'text-teal-600' },
+  orange: { chip: 'bg-orange-50', icon: 'text-orange-600' },
+  purple: { chip: 'bg-purple-50', icon: 'text-purple-600' },
+  emerald: { chip: 'bg-emerald-50', icon: 'text-emerald-600' },
+  rose: { chip: 'bg-rose-50', icon: 'text-rose-600' },
+  slate: { chip: 'bg-slate-100', icon: 'text-slate-600' },
+}
+
+function StatCard({ title, icon: Icon, iconBg, bigNumber, unit, subtitle, segments }: StatCardProps) {
   const total = segments.reduce((s, seg) => s + seg.value, 0)
+  const accent = STAT_ACCENTS[iconBg.split('-')[1] ?? ''] ?? STAT_ACCENTS.slate
+  // 4+ segments means a third tile row — shrink the numerals so it still fits the card.
+  const valueSize = segments.length >= 4 ? 'text-sm' : 'text-base'
   return (
-    <Card className="h-full overflow-hidden border-teal-100/60 bg-white shadow-sm">
-      <CardContent className="px-2 pt-1.5 pb-1.5 h-full flex flex-col justify-between">
-        <div className="flex items-center gap-2">
-          <div className={cn('rounded-full p-1.5 shrink-0', iconBg)}>
-            <Icon className={cn('h-3.5 w-3.5', iconColor)} />
+    <Card className="h-full overflow-hidden border-slate-200/70 bg-white shadow-sm">
+      <CardContent className="p-1.5 h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className={cn('rounded-lg p-1 shrink-0', accent.chip)}>
+            <Icon className={cn('h-3.5 w-3.5', accent.icon)} />
           </div>
           <div className="min-w-0">
             <p className="text-xs font-extrabold text-slate-800 tracking-tight truncate">{title}</p>
-            {subtitle && <p className="text-[10px] text-slate-400 mt-0.5 truncate">{subtitle}</p>}
+            {subtitle && <p className="text-[9px] text-slate-400 truncate">{subtitle}</p>}
           </div>
         </div>
 
-        <div className="mt-2 flex items-baseline gap-1">
-          <span className="text-2xl font-extrabold tabular-nums text-slate-900">{bigNumber}</span>
-          {unit && <span className="text-[10px] font-medium text-slate-500">{unit}</span>}
-        </div>
+        <div className="my-1.5 h-px bg-slate-100 shrink-0" />
 
-        {/* Stacked progress bar */}
-        {total > 0 && (
-          <div className="mt-1.5 h-2 w-full rounded-full overflow-hidden bg-slate-100 flex gap-0.5">
-            {segments.map((seg, i) => {
-              const pct = (seg.value / total) * 100
-              if (pct === 0) return null
-              return (
-                <div
-                  key={i}
-                  style={{ width: `${pct}%`, backgroundColor: seg.color }}
-                  className="h-full transition-all first:rounded-l-full last:rounded-r-full"
-                />
-              )
-            })}
-          </div>
-        )}
-
-        {/* Legend */}
-        <div className="flex flex-col gap-y-0.5 mt-2">
-          {segments.map((seg, i) => (
-            <div key={i} className="flex items-center justify-between text-[9px]">
-              <span className="flex items-center gap-1 text-slate-500">
-                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
-                <span className="truncate">{seg.label}</span>
-              </span>
-              <span className="font-bold tabular-nums text-slate-800">{seg.value}</span>
+        {/* Tiles: total first, then one per segment. `auto-rows-fr` stretches rows to
+            fill the card, and the total tile goes full-width on even segment counts so
+            the last row never leaves a hole. */}
+        <div className="grid grid-cols-2 gap-1 auto-rows-fr flex-1 min-h-0">
+          <div
+            className={cn(
+              'rounded-lg bg-slate-50 px-1.5 py-1 min-w-0 flex flex-col justify-between',
+              segments.length % 2 === 0 && 'col-span-2',
+            )}
+          >
+            <p className="text-[8px] font-bold uppercase tracking-wide text-slate-500 truncate">{unit || 'Total'}</p>
+            <div className="flex items-center gap-1.5">
+              <p className={cn(valueSize, 'font-extrabold tabular-nums leading-none text-slate-900 shrink-0')}>{bigNumber}</p>
+              {total > 0 && (
+                <div className="flex-1 h-1.5 min-w-0 rounded-full overflow-hidden bg-slate-200/70 flex gap-px">
+                  {segments.map((seg, i) => (
+                    <div key={i} style={{ width: `${(seg.value / total) * 100}%`, backgroundColor: seg.color }} className="h-full" />
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+          </div>
+          {segments.map((seg, i) => {
+            const pct = total > 0 ? Math.round((seg.value / total) * 100) : 0
+            return (
+              <div key={i} className="rounded-lg px-1.5 py-1 min-w-0 flex flex-col justify-between gap-0.5" style={{ backgroundColor: `${seg.color}14` }}>
+                <div className="flex items-baseline justify-between gap-1">
+                  <p className="text-[8px] font-bold uppercase tracking-wide truncate" style={{ color: seg.color }}>{seg.label}</p>
+                  <span className="text-[8px] font-bold tabular-nums shrink-0" style={{ color: seg.color }}>{pct}%</span>
+                </div>
+                <p className={cn(valueSize, 'font-extrabold tabular-nums leading-none text-slate-900')}>{seg.value}</p>
+                <div className="h-1 w-full rounded-full overflow-hidden bg-white/70">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: seg.color }} />
+                </div>
+              </div>
+            )
+          })}
         </div>
       </CardContent>
     </Card>
@@ -634,6 +650,47 @@ export default function DashboardView() {
     },
   })
 
+  // Activity items
+  const activityItems = activityData?.items ?? []
+
+  // Build photos array: prefer real photos, but ensure at least 3 thumbnails by appending dummy placeholders
+  const photoItems = (() => {
+    const photos = (activityItems.filter(i => i.photo) as ActivityItem[]).slice()
+    const placeholders = ['/slideshow/slide1.jpg', '/slideshow/slide2.jpg', '/slideshow/slide3.jpg']
+    let idx = 0
+    while (photos.length < 3 && idx < placeholders.length) {
+      photos.push({
+        id: `dummy-${idx}`,
+        kind: 'photo',
+        title: `Sample Photo ${idx + 1}`,
+        subtitle: '',
+        timestamp: new Date().toISOString(),
+        photo: placeholders[idx],
+      } as ActivityItem)
+      idx++
+    }
+    return photos
+  })()
+
+  // Auto-scroll carousel for photos (single visible at a time).
+  // These hooks must stay above the isLoading early return — declaring them after it
+  // changes the hook count between renders and crashes React.
+  const photoStripRef = useRef<HTMLDivElement | null>(null)
+  const [photoIndex, setPhotoIndex] = useState(0)
+
+  useEffect(() => {
+    if (photoItems.length === 0) return
+    const t = setInterval(() => setPhotoIndex(i => (i + 1) % photoItems.length), 3000)
+    return () => clearInterval(t)
+  }, [photoItems.length])
+
+  useEffect(() => {
+    const el = photoStripRef.current
+    if (!el) return
+    const width = el.clientWidth
+    el.scrollTo({ left: photoIndex * width, behavior: 'smooth' })
+  }, [photoIndex])
+
   const hasActiveFilters = selectedProject !== 'all' || selectedContractor !== 'all' || selectedCamp !== 'all' || dateRange.preset !== 'today'
 
   const handleResetFilters = () => {
@@ -711,45 +768,6 @@ export default function DashboardView() {
       subtitle: 'Demo Camp',
     })
   }
-
-  // Activity items
-  const activityItems = activityData?.items ?? []
-
-  // Build photos array: prefer real photos, but ensure at least 3 thumbnails by appending dummy placeholders
-  const photoItems = (() => {
-    const photos = (activityItems.filter(i => i.photo) as ActivityItem[]).slice()
-    const placeholders = ['/slideshow/slide1.jpg', '/slideshow/slide2.jpg', '/slideshow/slide3.jpg']
-    let idx = 0
-    while (photos.length < 3 && idx < placeholders.length) {
-      photos.push({
-        id: `dummy-${idx}`,
-        kind: 'photo',
-        title: `Sample Photo ${idx + 1}`,
-        subtitle: '',
-        timestamp: new Date().toISOString(),
-        photo: placeholders[idx],
-      } as ActivityItem)
-      idx++
-    }
-    return photos
-  })()
-
-  // Auto-scroll carousel for photos (single visible at a time)
-  const photoStripRef = useRef<HTMLDivElement | null>(null)
-  const [photoIndex, setPhotoIndex] = useState(0)
-
-  useEffect(() => {
-    if (!photoItems || photoItems.length === 0) return
-    const t = setInterval(() => setPhotoIndex(i => (i + 1) % photoItems.length), 3000)
-    return () => clearInterval(t)
-  }, [photoItems.length])
-
-  useEffect(() => {
-    const el = photoStripRef.current
-    if (!el) return
-    const width = el.clientWidth
-    el.scrollTo({ left: photoIndex * width, behavior: 'smooth' })
-  }, [photoIndex])
 
   // Tab config
   const tabs = [
@@ -881,11 +899,11 @@ export default function DashboardView() {
             className="grid min-h-0"
             style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}
           >
-            <StatCard title="Total Workforce" icon={Users} iconBg="bg-teal-500" iconColor="text-white" bigNumber={String(dash.totalWorkers)} unit="workers" subtitle="Male vs. Female" segments={[{ label: 'Male', value: maleCount, color: DONUT_COLORS.male }, { label: 'Female', value: femaleCount, color: DONUT_COLORS.female }, ...(otherGender > 0 ? [{ label: 'Other', value: otherGender, color: '#94a3b8' }] : [])]} />
-            <StatCard title="Skill Mix" icon={Wrench} iconBg="bg-orange-500" iconColor="text-white" bigNumber={String(dash.skilledWorkers + dash.unskilledWorkers)} unit="workers" subtitle="Skilled vs Unskilled" segments={[{ label: 'Skilled', value: dash.skilledWorkers, color: DONUT_COLORS.skilled }, { label: 'Unskilled', value: dash.unskilledWorkers, color: DONUT_COLORS.unskilled }]} />
-            <StatCard title="Age Distribution" icon={Activity} iconBg="bg-purple-500" iconColor="text-white" bigNumber={String(dash.totalWorkers)} unit="workers" subtitle="Workforce by age band" segments={(dash.ageDistribution ?? []).map((a, i) => ({ label: a.bucket, value: a.count, color: [DONUT_COLORS.age1, DONUT_COLORS.age2, DONUT_COLORS.age3, DONUT_COLORS.age4][i] || '#94a3b8' }))} />
-            <StatCard title="Medical Tests" icon={HeartPulse} iconBg="bg-emerald-500" iconColor="text-white" bigNumber={String(medFit + medUnfit + medPending + medConditional)} unit="tests" subtitle="Fitness outcome" segments={[{ label: 'Fit', value: medFit, color: DONUT_COLORS.medicalFit }, { label: 'Unfit', value: medUnfit, color: DONUT_COLORS.medicalUnfit }, { label: 'Conditional', value: medConditional, color: DONUT_COLORS.medicalConditional }].filter(s => s.value > 0)} />
-            <StatCard title="Training Status" icon={GraduationCap} iconBg="bg-orange-500" iconColor="text-white" bigNumber={String(trainingTotal)} unit="certificates" subtitle="Certificate validity" segments={[{ label: 'Valid', value: trainingValid, color: DONUT_COLORS.trainingValid }, { label: 'Expiring Soon', value: trainingExpiring, color: DONUT_COLORS.trainingExpiring }, { label: 'Expired', value: trainingExpired, color: DONUT_COLORS.trainingExpired }].filter(s => s.value > 0)} />
+            <StatCard title="Total Workforce" icon={Users} iconBg="bg-teal-500" bigNumber={String(dash.totalWorkers)} unit="workers" subtitle="Male vs. Female" segments={[{ label: 'Male', value: maleCount, color: DONUT_COLORS.male }, { label: 'Female', value: femaleCount, color: DONUT_COLORS.female }, ...(otherGender > 0 ? [{ label: 'Other', value: otherGender, color: '#94a3b8' }] : [])]} />
+            <StatCard title="Skill Mix" icon={Wrench} iconBg="bg-orange-500" bigNumber={String(dash.skilledWorkers + dash.unskilledWorkers)} unit="workers" subtitle="Skilled vs Unskilled" segments={[{ label: 'Skilled', value: dash.skilledWorkers, color: DONUT_COLORS.skilled }, { label: 'Unskilled', value: dash.unskilledWorkers, color: DONUT_COLORS.unskilled }]} />
+            <StatCard title="Age Distribution" icon={Activity} iconBg="bg-purple-500" bigNumber={String(dash.totalWorkers)} unit="workers" subtitle="Workforce by age band" segments={(dash.ageDistribution ?? []).map((a, i) => ({ label: a.bucket, value: a.count, color: [DONUT_COLORS.age1, DONUT_COLORS.age2, DONUT_COLORS.age3, DONUT_COLORS.age4][i] || '#94a3b8' }))} />
+            <StatCard title="Medical Tests" icon={HeartPulse} iconBg="bg-emerald-500" bigNumber={String(medFit + medUnfit + medPending + medConditional)} unit="tests" subtitle="Fitness outcome" segments={[{ label: 'Fit', value: medFit, color: DONUT_COLORS.medicalFit }, { label: 'Unfit', value: medUnfit, color: DONUT_COLORS.medicalUnfit }, { label: 'Conditional', value: medConditional, color: DONUT_COLORS.medicalConditional }].filter(s => s.value > 0)} />
+            <StatCard title="Training Status" icon={GraduationCap} iconBg="bg-orange-500" bigNumber={String(trainingTotal)} unit="certificates" subtitle="Certificate validity" segments={[{ label: 'Valid', value: trainingValid, color: DONUT_COLORS.trainingValid }, { label: 'Expiring Soon', value: trainingExpiring, color: DONUT_COLORS.trainingExpiring }, { label: 'Expired', value: trainingExpired, color: DONUT_COLORS.trainingExpired }].filter(s => s.value > 0)} />
           </motion.div>
 
           {/* Row 2: 4 Donut chart cards */}
@@ -900,7 +918,7 @@ export default function DashboardView() {
               title="Equipment Status"
               icon={Wrench}
               iconBg="bg-orange-500"
-              iconColor="text-white"
+             
               bigNumber={String(equipmentData.reduce((s, d) => s + d.value, 0))}
               unit="items"
               subtitle="Condition breakdown"
@@ -910,7 +928,7 @@ export default function DashboardView() {
               title="Inspection Status"
               icon={ShieldCheck}
               iconBg="bg-orange-500"
-              iconColor="text-white"
+             
               bigNumber={String(inspectionData.reduce((s, d) => s + d.value, 0))}
               unit="inspections"
               subtitle="Pass / Fail rates"
@@ -920,7 +938,7 @@ export default function DashboardView() {
               title="Ownership"
               icon={Building2}
               iconBg="bg-orange-500"
-              iconColor="text-white"
+             
               bigNumber={String(ownershipData.reduce((s, d) => s + d.value, 0))}
               unit="assets"
               subtitle="Own vs Rented"
@@ -930,7 +948,7 @@ export default function DashboardView() {
               title="Approval Status"
               icon={CheckCircle2}
               iconBg="bg-orange-500"
-              iconColor="text-white"
+             
               bigNumber={`${vs.total > 0 ? Math.round((vs.approvalStatus.Approved / vs.total) * 100) : 0}`}
               unit="% approved"
               subtitle="Clearance rate"
@@ -1016,7 +1034,7 @@ export default function DashboardView() {
                       <ScrollArea className="h-full pr-1">
                         <div className="space-y-0">
                           {activityItems.length === 0 ? (
-                            <p className="text-xs text-slate-400 text-center py-8">No recent activity</p>
+                            <p className="text-xs text-slate-400 text-center py-3">No recent activity</p>
                           ) : (
                             <AnimatePresence mode="popLayout">
                               {activityItems.map((item) => (
