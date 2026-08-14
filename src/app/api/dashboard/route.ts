@@ -1,12 +1,63 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 // GET /api/dashboard
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const today = new Date()
-    today.setUTCHours(0, 0, 0, 0)
-    const todayStr = today.toISOString().split('T')[0]
+    const { searchParams } = new URL(req.url)
+    const dateParam = searchParams.get('date')
+    const siteId = searchParams.get('siteId') || searchParams.get('project')
+    const contractorId = searchParams.get('contractorId') || searchParams.get('contractor')
+
+    // Determine target date for attendance
+    const targetDate = dateParam ? new Date(dateParam) : new Date()
+    targetDate.setUTCHours(0, 0, 0, 0)
+    const nextDay = new Date(targetDate)
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+
+    // Base filter objects
+    const workerWhere: any = {}
+    if (siteId && siteId !== 'all') workerWhere.siteId = siteId
+    if (contractorId && contractorId !== 'all') workerWhere.contractorId = contractorId
+
+    const grievanceWhere: any = { status: { in: ['Open', 'InProgress'] } }
+
+    const incidentWhere: any = { status: { in: ['Open', 'UnderInvestigation'] } }
+    if (siteId && siteId !== 'all') incidentWhere.siteId = siteId
+    if (contractorId && contractorId !== 'all') incidentWhere.contractorId = contractorId
+
+    const allIncidentsWhere: any = { status: { in: ['Open', 'UnderInvestigation', 'Closed'] } }
+    if (siteId && siteId !== 'all') allIncidentsWhere.siteId = siteId
+    if (contractorId && contractorId !== 'all') allIncidentsWhere.contractorId = contractorId
+
+    const workerRelationFilter: any = {}
+    if (siteId && siteId !== 'all') workerRelationFilter.siteId = siteId
+    if (contractorId && contractorId !== 'all') workerRelationFilter.contractorId = contractorId
+
+    const hasWorkerFilter = Object.keys(workerRelationFilter).length > 0
+
+    const medicalRecordWhere: any = hasWorkerFilter ? { worker: workerRelationFilter } : {}
+    const trainingRecordWhere: any = hasWorkerFilter ? { worker: workerRelationFilter } : {}
+
+    const attendanceWhere: any = {
+      date: {
+        gte: targetDate,
+        lt: nextDay,
+      },
+      status: 'Present',
+      ...(hasWorkerFilter ? { worker: workerRelationFilter } : {}),
+    }
+
+    const vehicleWhere: any = {}
+    if (siteId && siteId !== 'all') vehicleWhere.siteId = siteId
+    if (contractorId && contractorId !== 'all') vehicleWhere.contractorId = contractorId
+
+    const campWhere: any = {}
+    if (siteId && siteId !== 'all') campWhere.siteId = siteId
+    if (contractorId && contractorId !== 'all') campWhere.contractorId = contractorId
+
+    const siteFilter: any = (siteId && siteId !== 'all') ? { siteId } : {}
+    const contractorFilter: any = (contractorId && contractorId !== 'all') ? { id: contractorId } : {}
 
     // Basic counts
     const [
@@ -38,14 +89,15 @@ export async function GET() {
       medNonCompliant,
       medPending,
     ] = await Promise.all([
-      db.worker.count(),
-      db.worker.count({ where: { isActive: true } }),
-      db.grievance.count({ where: { status: { in: ['Open', 'InProgress'] } } }),
-      db.incident.count({ where: { status: { in: ['Open', 'UnderInvestigation'] } } }),
-      db.medicalRecord.count({ where: { result: 'Pending' } }),
+      db.worker.count({ where: workerWhere }),
+      db.worker.count({ where: { ...workerWhere, isActive: true } }),
+      db.grievance.count({ where: grievanceWhere }),
+      db.incident.count({ where: incidentWhere }),
+      db.medicalRecord.count({ where: { ...medicalRecordWhere, result: 'Pending' } }),
       // Training expiring within 30 days
       db.trainingRecord.count({
         where: {
+          ...trainingRecordWhere,
           validityDate: {
             lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             gte: new Date(),
@@ -53,24 +105,23 @@ export async function GET() {
           status: 'Valid',
         },
       }),
-      // Attendance today
+      // Attendance for target date
       db.attendance.count({
-        where: {
-          date: today,
-          status: 'Present',
-        },
+        where: attendanceWhere,
       }),
       // Incident breakdown by type
       db.incident.findMany({
-        where: { status: { in: ['Open', 'UnderInvestigation', 'Closed'] } },
+        where: allIncidentsWhere,
         select: { incidentType: true },
       }),
       // Training status breakdown
       db.trainingRecord.findMany({
+        where: trainingRecordWhere,
         select: { status: true },
       }),
       // Gender + Age (for skill mix & age distribution)
       db.worker.findMany({
+        where: workerWhere,
         select: {
           gender: true,
           age: true,
@@ -80,10 +131,12 @@ export async function GET() {
       }),
       // Medical test breakdown
       db.medicalRecord.findMany({
+        where: medicalRecordWhere,
         select: { result: true, examinationType: true },
       }),
       // All labour camps (with worker counts for workforce-per-camp)
       db.labourCamp.findMany({
+        where: campWhere,
         include: {
           contractor: { select: { id: true, name: true, code: true } },
           site: { select: { id: true, name: true } },
@@ -92,11 +145,12 @@ export async function GET() {
       }),
       // All contractors (for camps-per-contractor)
       db.contractor.findMany({
-        where: { isActive: true },
+        where: { isActive: true, ...contractorFilter },
         include: { _count: { select: { labourCamps: true, workers: true } } },
       }),
       // Vehicles
       db.vehicle.findMany({
+        where: vehicleWhere,
         select: {
           id: true,
           vehicleType: true,
@@ -112,20 +166,20 @@ export async function GET() {
         select: { id: true, status: true, expiryDate: true },
       }),
       // Site facilities compliance breakdown
-      db.siteFacility.count(),
-      db.siteFacility.count({ where: { status: 'Compliant' } }),
-      db.siteFacility.count({ where: { status: 'NonCompliant' } }),
-      db.siteFacility.count({ where: { status: 'Pending' } }),
+      db.siteFacility.count({ where: siteFilter }),
+      db.siteFacility.count({ where: { ...siteFilter, status: 'Compliant' } }),
+      db.siteFacility.count({ where: { ...siteFilter, status: 'NonCompliant' } }),
+      db.siteFacility.count({ where: { ...siteFilter, status: 'Pending' } }),
       // Site security compliance breakdown
-      db.siteSecurityItem.count(),
-      db.siteSecurityItem.count({ where: { status: 'Compliant' } }),
-      db.siteSecurityItem.count({ where: { status: 'NonCompliant' } }),
-      db.siteSecurityItem.count({ where: { status: 'Pending' } }),
+      db.siteSecurityItem.count({ where: siteFilter }),
+      db.siteSecurityItem.count({ where: { ...siteFilter, status: 'Compliant' } }),
+      db.siteSecurityItem.count({ where: { ...siteFilter, status: 'NonCompliant' } }),
+      db.siteSecurityItem.count({ where: { ...siteFilter, status: 'Pending' } }),
       // Med infra compliance breakdown
-      db.medInfraItem.count(),
-      db.medInfraItem.count({ where: { status: 'Compliant' } }),
-      db.medInfraItem.count({ where: { status: 'NonCompliant' } }),
-      db.medInfraItem.count({ where: { status: 'Pending' } }),
+      db.medInfraItem.count({ where: siteFilter }),
+      db.medInfraItem.count({ where: { ...siteFilter, status: 'Compliant' } }),
+      db.medInfraItem.count({ where: { ...siteFilter, status: 'NonCompliant' } }),
+      db.medInfraItem.count({ where: { ...siteFilter, status: 'Pending' } }),
     ])
 
     // ─── Incident breakdown by type ───

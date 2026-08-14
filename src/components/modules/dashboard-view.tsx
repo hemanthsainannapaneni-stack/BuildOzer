@@ -18,8 +18,12 @@ import {
   Activity,
   HeartPulse,
   GraduationCap,
+  Calendar,
   CalendarDays,
   MapPin,
+  HardHat,
+  RotateCcw,
+  Filter,
 } from 'lucide-react'
 import {
   BarChart,
@@ -570,15 +574,50 @@ export default function DashboardView() {
   const [activeTab, setActiveTab] = useState<'photos' | 'new-entry' | 'medical' | 'training' | 'incident'>('photos')
   const [previewPhoto, setPreviewPhoto] = useState<ActivityItem | null>(null)
 
+  // Filter states
+  const todayDateStr = new Date().toISOString().split('T')[0]
+  const [selectedDate, setSelectedDate] = useState<string>(todayDateStr)
+  const [selectedProject, setSelectedProject] = useState<string>('all')
+  const [selectedContractor, setSelectedContractor] = useState<string>('all')
+
+  const { data: sites } = useQuery<any[]>({
+    queryKey: ['sites'],
+    queryFn: () => fetch('/api/sites').then(r => r.json()),
+  })
+
+  const { data: contractors } = useQuery<any[]>({
+    queryKey: ['contractors'],
+    queryFn: () => fetch('/api/contractors').then(r => r.json()),
+  })
+
   const { data: dash, isLoading } = useQuery<DashboardData>({
-    queryKey: ['dashboard'],
-    queryFn: () => fetch('/api/dashboard').then(r => r.json()),
+    queryKey: ['dashboard', selectedDate, selectedProject, selectedContractor],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (selectedDate) params.append('date', selectedDate)
+      if (selectedProject && selectedProject !== 'all') params.append('siteId', selectedProject)
+      if (selectedContractor && selectedContractor !== 'all') params.append('contractorId', selectedContractor)
+      return fetch(`/api/dashboard?${params.toString()}`).then(r => r.json())
+    },
   })
 
   const { data: activityData } = useQuery<{ items: ActivityItem[]; count: number }>({
-    queryKey: ['dashboard', 'recent-activity', activeTab],
-    queryFn: () => fetch(`/api/dashboard/recent-activity?type=${activeTab}`).then(r => r.json()),
+    queryKey: ['dashboard', 'recent-activity', activeTab, selectedProject, selectedContractor],
+    queryFn: () => {
+      const params = new URLSearchParams({ type: activeTab })
+      if (selectedProject && selectedProject !== 'all') params.append('siteId', selectedProject)
+      if (selectedContractor && selectedContractor !== 'all') params.append('contractorId', selectedContractor)
+      return fetch(`/api/dashboard/recent-activity?${params.toString()}`).then(r => r.json())
+    },
   })
+
+  const hasActiveFilters = selectedProject !== 'all' || selectedContractor !== 'all' || selectedDate !== todayDateStr
+
+  const handleResetFilters = () => {
+    setSelectedDate(todayDateStr)
+    setSelectedProject('all')
+    setSelectedContractor('all')
+  }
 
   if (isLoading || !dash) return <DashboardSkeleton />
 
@@ -663,23 +702,96 @@ export default function DashboardView() {
 
   return (
     <div className="h-full flex flex-col gap-2 overflow-hidden">
-      {/* ────── Hero Header (compact, ~48px) ────── */}
+      {/* ────── Hero Header with 1/4 Greeting & 3/4 Filters ────── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="shrink-0 rounded-xl bg-gradient-to-r from-teal-50 via-cyan-50/80 to-teal-50/60 border border-teal-100/60 px-4 py-2 flex items-center justify-between"
+        className="shrink-0 rounded-xl bg-gradient-to-r from-teal-50 via-cyan-50/80 to-teal-50/60 border border-teal-100/70 p-2 sm:px-3 sm:py-1.5 shadow-2xs"
       >
-        <div>
-          <h1 className="text-base font-bold tracking-tight text-slate-800">{getGreeting()} 👋</h1>
-          <p className="text-[11px] text-slate-600 flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" />
-            {getTodayFormatted()}
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-500">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-          Live
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 w-full">
+          {/* 1/4 Left: Good Morning Greeting */}
+          <div className="lg:w-1/4 shrink-0 flex items-center justify-between lg:pr-3 lg:border-r lg:border-teal-200/60">
+            <div className="min-w-0">
+              <h1 className="text-sm font-bold tracking-tight text-slate-800 truncate flex items-center gap-1.5">
+                <span>{getGreeting()}</span>
+                <span className="text-base">👋</span>
+              </h1>
+              <p className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
+                <CalendarDays className="h-3 w-3 text-teal-600 shrink-0" />
+                <span>{getTodayFormatted()}</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-100/70 text-teal-700 text-[10px] font-semibold border border-teal-200/60 shrink-0">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+              Live
+            </div>
+          </div>
+
+          {/* 3/4 Right: Filters (Date, Project, Contractor) */}
+          <div className="lg:w-3/4 flex-1 flex flex-wrap sm:flex-nowrap items-center gap-2">
+            {/* Date Filter */}
+            <div className="flex-1 min-w-[130px] sm:min-w-[140px] relative flex items-center h-8 rounded-lg border border-teal-200/80 bg-white/95 px-2.5 text-xs shadow-2xs hover:border-teal-400 focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all">
+              <Calendar className="h-3.5 w-3.5 text-teal-600 mr-1.5 shrink-0 pointer-events-none" />
+              <span className="text-[10px] font-bold uppercase text-slate-400 mr-1.5 shrink-0 pointer-events-none">Date:</span>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-transparent border-0 outline-none text-xs font-semibold text-slate-800 w-full cursor-pointer p-0"
+              />
+            </div>
+
+            {/* Project Filter */}
+            <div className="flex-1 min-w-[140px] sm:min-w-[150px] relative flex items-center h-8 rounded-lg border border-teal-200/80 bg-white/95 px-2 text-xs shadow-2xs hover:border-teal-400 transition-all">
+              <Building2 className="h-3.5 w-3.5 text-teal-600 mr-1.5 shrink-0 pointer-events-none" />
+              <span className="text-[10px] font-bold uppercase text-slate-400 mr-1 shrink-0 pointer-events-none">Project:</span>
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="bg-transparent border-0 outline-none text-xs font-semibold text-slate-800 w-full cursor-pointer pr-2 py-1 truncate focus:ring-0"
+              >
+                <option value="all">All Projects {sites && Array.isArray(sites) ? `(${sites.length})` : ''}</option>
+                {sites && Array.isArray(sites) && sites.map((s: any) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Contractor Filter */}
+            <div className="flex-1 min-w-[140px] sm:min-w-[150px] relative flex items-center h-8 rounded-lg border border-teal-200/80 bg-white/95 px-2 text-xs shadow-2xs hover:border-teal-400 transition-all">
+              <HardHat className="h-3.5 w-3.5 text-teal-600 mr-1.5 shrink-0 pointer-events-none" />
+              <span className="text-[10px] font-bold uppercase text-slate-400 mr-1 shrink-0 pointer-events-none">Contractor:</span>
+              <select
+                value={selectedContractor}
+                onChange={(e) => setSelectedContractor(e.target.value)}
+                className="bg-transparent border-0 outline-none text-xs font-semibold text-slate-800 w-full cursor-pointer pr-2 py-1 truncate focus:ring-0"
+              >
+                <option value="all">All Contractors {contractors && Array.isArray(contractors) ? `(${contractors.length})` : ''}</option>
+                {contractors && Array.isArray(contractors) && contractors.map((c: any) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Reset button if any filter is changed */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-8 px-2 text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg shrink-0 gap-1"
+                title="Reset Filters"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline text-[11px] font-medium">Reset</span>
+              </Button>
+            )}
+          </div>
         </div>
       </motion.div>
 
