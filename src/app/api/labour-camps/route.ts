@@ -10,11 +10,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const siteId = searchParams.get('siteId')
+    const contractorId = searchParams.get('contractorId')
     const includeInactive = searchParams.get('all') === 'true'
 
     const where: Record<string, unknown> = {}
     if (!includeInactive) where.isActive = true
-    if (siteId) where.siteId = siteId
+    if (siteId && siteId !== 'all') where.siteId = siteId
+    if (contractorId && contractorId !== 'all') where.contractorId = contractorId
 
     const camps = await db.labourCamp.findMany({
       where,

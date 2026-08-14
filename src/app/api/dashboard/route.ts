@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
     const dateParam = searchParams.get('date')
     const siteId = searchParams.get('siteId') || searchParams.get('project')
     const contractorId = searchParams.get('contractorId') || searchParams.get('contractor')
+    const campId = searchParams.get('campId') || searchParams.get('labourCampId') || searchParams.get('camp')
 
     // Determine target date for attendance
     const targetDate = dateParam ? new Date(dateParam) : new Date()
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
     const workerWhere: any = {}
     if (siteId && siteId !== 'all') workerWhere.siteId = siteId
     if (contractorId && contractorId !== 'all') workerWhere.contractorId = contractorId
+    if (campId && campId !== 'all') workerWhere.labourCampId = campId
 
     const grievanceWhere: any = { status: { in: ['Open', 'InProgress'] } }
 
@@ -33,6 +35,7 @@ export async function GET(req: NextRequest) {
     const workerRelationFilter: any = {}
     if (siteId && siteId !== 'all') workerRelationFilter.siteId = siteId
     if (contractorId && contractorId !== 'all') workerRelationFilter.contractorId = contractorId
+    if (campId && campId !== 'all') workerRelationFilter.labourCampId = campId
 
     const hasWorkerFilter = Object.keys(workerRelationFilter).length > 0
 
@@ -55,6 +58,7 @@ export async function GET(req: NextRequest) {
     const campWhere: any = {}
     if (siteId && siteId !== 'all') campWhere.siteId = siteId
     if (contractorId && contractorId !== 'all') campWhere.contractorId = contractorId
+    if (campId && campId !== 'all') campWhere.id = campId
 
     const siteFilter: any = (siteId && siteId !== 'all') ? { siteId } : {}
     const contractorFilter: any = (contractorId && contractorId !== 'all') ? { id: contractorId } : {}

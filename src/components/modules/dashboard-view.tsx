@@ -22,6 +22,7 @@ import {
   CalendarDays,
   MapPin,
   HardHat,
+  Tent,
   RotateCcw,
   Filter,
 } from 'lucide-react'
@@ -579,6 +580,7 @@ export default function DashboardView() {
   const [selectedDate, setSelectedDate] = useState<string>(todayDateStr)
   const [selectedProject, setSelectedProject] = useState<string>('all')
   const [selectedContractor, setSelectedContractor] = useState<string>('all')
+  const [selectedCamp, setSelectedCamp] = useState<string>('all')
 
   const { data: sites } = useQuery<any[]>({
     queryKey: ['sites'],
@@ -590,33 +592,46 @@ export default function DashboardView() {
     queryFn: () => fetch('/api/contractors').then(r => r.json()),
   })
 
+  const { data: labourCamps } = useQuery<any[]>({
+    queryKey: ['labour-camps', selectedProject, selectedContractor],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (selectedProject && selectedProject !== 'all') params.append('siteId', selectedProject)
+      if (selectedContractor && selectedContractor !== 'all') params.append('contractorId', selectedContractor)
+      return fetch(`/api/labour-camps?${params.toString()}`).then(r => r.json())
+    },
+  })
+
   const { data: dash, isLoading } = useQuery<DashboardData>({
-    queryKey: ['dashboard', selectedDate, selectedProject, selectedContractor],
+    queryKey: ['dashboard', selectedDate, selectedProject, selectedContractor, selectedCamp],
     queryFn: () => {
       const params = new URLSearchParams()
       if (selectedDate) params.append('date', selectedDate)
       if (selectedProject && selectedProject !== 'all') params.append('siteId', selectedProject)
       if (selectedContractor && selectedContractor !== 'all') params.append('contractorId', selectedContractor)
+      if (selectedCamp && selectedCamp !== 'all') params.append('campId', selectedCamp)
       return fetch(`/api/dashboard?${params.toString()}`).then(r => r.json())
     },
   })
 
   const { data: activityData } = useQuery<{ items: ActivityItem[]; count: number }>({
-    queryKey: ['dashboard', 'recent-activity', activeTab, selectedProject, selectedContractor],
+    queryKey: ['dashboard', 'recent-activity', activeTab, selectedProject, selectedContractor, selectedCamp],
     queryFn: () => {
       const params = new URLSearchParams({ type: activeTab })
       if (selectedProject && selectedProject !== 'all') params.append('siteId', selectedProject)
       if (selectedContractor && selectedContractor !== 'all') params.append('contractorId', selectedContractor)
+      if (selectedCamp && selectedCamp !== 'all') params.append('campId', selectedCamp)
       return fetch(`/api/dashboard/recent-activity?${params.toString()}`).then(r => r.json())
     },
   })
 
-  const hasActiveFilters = selectedProject !== 'all' || selectedContractor !== 'all' || selectedDate !== todayDateStr
+  const hasActiveFilters = selectedProject !== 'all' || selectedContractor !== 'all' || selectedCamp !== 'all' || selectedDate !== todayDateStr
 
   const handleResetFilters = () => {
     setSelectedDate(todayDateStr)
     setSelectedProject('all')
     setSelectedContractor('all')
+    setSelectedCamp('all')
   }
 
   if (isLoading || !dash) return <DashboardSkeleton />
@@ -770,6 +785,23 @@ export default function DashboardView() {
                 {contractors && Array.isArray(contractors) && contractors.map((c: any) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Camp Filter */}
+            <div className="w-32 sm:w-36 relative flex items-center h-7.5 rounded-lg border border-teal-200/80 bg-white/95 px-1.5 text-xs shadow-2xs hover:border-teal-400 transition-all shrink-0">
+              <Tent className="h-3 w-3 text-teal-600 mr-1 shrink-0 pointer-events-none" />
+              <select
+                value={selectedCamp}
+                onChange={(e) => setSelectedCamp(e.target.value)}
+                className="bg-transparent border-0 outline-none text-[11px] font-semibold text-slate-800 w-full cursor-pointer pr-1 py-0.5 truncate focus:ring-0"
+              >
+                <option value="all">All Camps {labourCamps && Array.isArray(labourCamps) ? `(${labourCamps.length})` : ''}</option>
+                {labourCamps && Array.isArray(labourCamps) && labourCamps.map((camp: any) => (
+                  <option key={camp.id} value={camp.id}>
+                    {camp.name}
                   </option>
                 ))}
               </select>
