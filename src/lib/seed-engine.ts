@@ -126,49 +126,49 @@ interface DesigConfig {
 }
 
 const DESIG_CONFIGS: DesigConfig[] = [
-  { name:'Helper', category:'General', count:22, dailyRateRange:[500,650], wageCategory:'Unskilled', skillLevel:'Unskilled',
+  { name:'Helper', category:'General', count:70, dailyRateRange:[500,650], wageCategory:'Unskilled', skillLevel:'Unskilled',
     qualWeights:{'Below 10th':60,'10th':30,'Other':10}, trainingTitles:['General Construction Safety'] },
-  { name:'Mason', category:'General', count:16, dailyRateRange:[700,900], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Mason', category:'General', count:45, dailyRateRange:[700,900], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Below 10th':25,'10th':40,'ITI':20,'12th':15}, trainingTitles:['Masonry Work Safety Practices','Scaffold Safety Awareness'] },
-  { name:'Electrician', category:'Safety-Critical', count:9, dailyRateRange:[700,850], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Electrician', category:'Safety-Critical', count:15, dailyRateRange:[700,850], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'10th':25,'ITI':45,'12th':15,'Diploma':15}, trainingTitles:['Electrical Safety & Lockout/Tagout','Working at Heights - Electrical'] },
-  { name:'Plumber', category:'General', count:8, dailyRateRange:[650,780], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Plumber', category:'General', count:12, dailyRateRange:[650,780], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Below 10th':20,'10th':40,'ITI':25,'12th':15}, trainingTitles:['Plumbing Safety & Tool Handling'] },
-  { name:'Carpenter', category:'General', count:8, dailyRateRange:[700,880], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Carpenter', category:'General', count:12, dailyRateRange:[700,880], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Below 10th':20,'10th':35,'ITI':30,'12th':15}, trainingTitles:['Carpentry Workshop Safety','Scaffold Safety Awareness'] },
-  { name:'Welder', category:'Safety-Critical', count:7, dailyRateRange:[750,920], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Welder', category:'Safety-Critical', count:10, dailyRateRange:[750,920], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'10th':20,'ITI':45,'12th':15,'Diploma':20}, trainingTitles:['Welding Safety & Fire Prevention','Fire Safety & Emergency Response'] },
-  { name:'Painter', category:'General', count:6, dailyRateRange:[600,720], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
+  { name:'Painter', category:'General', count:10, dailyRateRange:[600,720], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
     qualWeights:{'Below 10th':25,'10th':40,'ITI':20,'12th':15}, trainingTitles:['Painting & Chemical Safety'] },
-  { name:'Fitter', category:'General', count:5, dailyRateRange:[700,850], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Fitter', category:'General', count:8, dailyRateRange:[700,850], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Below 10th':15,'10th':35,'ITI':35,'12th':15}, trainingTitles:['Mechanical Fitting Safety','Tool Safety & Handling'] },
-  { name:'Steel Fixer', category:'General', count:7, dailyRateRange:[680,820], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
+  { name:'Steel Fixer', category:'General', count:12, dailyRateRange:[680,820], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
     qualWeights:{'Below 10th':25,'10th':40,'ITI':25,'12th':10}, trainingTitles:['Reinforcement Steel Work Safety','Cutting & Bending Safety'] },
-  { name:'Bar Bender', category:'General', count:5, dailyRateRange:[660,800], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
+  { name:'Bar Bender', category:'General', count:10, dailyRateRange:[660,800], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
     qualWeights:{'Below 10th':25,'10th':40,'ITI':25,'12th':10}, trainingTitles:['Bar Bending Machine Safety','Cutting & Bending Safety'] },
-  { name:'Shuttering Carpenter', category:'General', count:5, dailyRateRange:[720,900], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Shuttering Carpenter', category:'General', count:10, dailyRateRange:[720,900], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Below 10th':20,'10th':35,'ITI':30,'12th':15}, trainingTitles:['Formwork & Shuttering Safety','Scaffold Safety Awareness'] },
-  { name:'Concreting Worker', category:'General', count:5, dailyRateRange:[620,750], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
+  { name:'Concreting Worker', category:'General', count:10, dailyRateRange:[620,750], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
     qualWeights:{'Below 10th':30,'10th':40,'ITI':15,'12th':15}, trainingTitles:['Concreting & Curing Safety','Working with Wet Concrete'] },
-  { name:'Rigger', category:'Safety-Critical', count:3, dailyRateRange:[780,950], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Rigger', category:'Safety-Critical', count:6, dailyRateRange:[780,950], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'10th':20,'ITI':45,'12th':15,'Diploma':20}, trainingTitles:['Rigging & Slinging Safety','Working at Heights','Crane Signaling'] },
-  { name:'Crane Operator', category:'Safety-Critical', count:2, dailyRateRange:[950,1250], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Crane Operator', category:'Safety-Critical', count:4, dailyRateRange:[950,1250], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'10th':15,'ITI':40,'12th':20,'Diploma':25}, trainingTitles:['Crane Operation Safety Certification','Heavy Equipment Safety','Load Calculation & Rigging'] },
-  { name:'JCB Operator', category:'Safety-Critical', count:2, dailyRateRange:[900,1200], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'JCB Operator', category:'Safety-Critical', count:4, dailyRateRange:[900,1200], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'10th':20,'ITI':40,'12th':20,'Diploma':20}, trainingTitles:['JCB/Backhoe Operation Safety','Excavation Safety','Heavy Equipment Safety'] },
-  { name:'Dumper Driver', category:'Safety-Critical', count:2, dailyRateRange:[820,1050], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
+  { name:'Dumper Driver', category:'Safety-Critical', count:4, dailyRateRange:[820,1050], wageCategory:'SemiSkilled', skillLevel:'SemiSkilled',
     qualWeights:{'10th':25,'ITI':35,'12th':20,'Diploma':20}, trainingTitles:['Heavy Vehicle Driving Safety','Dump Site Safety Procedures'] },
-  { name:'Safety Officer', category:'Supervisory', count:2, dailyRateRange:[1100,1600], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Safety Officer', category:'Supervisory', count:4, dailyRateRange:[1100,1600], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Diploma':25,'Graduate':50,'ITI':15,'12th':10}, trainingTitles:['POSH Awareness Training','Fire Safety & Emergency Response','Incident Investigation & Reporting','First Aid & CPR Certification'] },
-  { name:'Supervisor', category:'Supervisory', count:3, dailyRateRange:[1050,1500], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Supervisor', category:'Supervisory', count:6, dailyRateRange:[1050,1500], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'12th':15,'ITI':25,'Diploma':35,'Graduate':25}, trainingTitles:['Supervisory Safety Training','Workforce Management & Safety','Incident Investigation & Reporting'] },
-  { name:'Surveyor', category:'Supervisory', count:2, dailyRateRange:[950,1300], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Surveyor', category:'Supervisory', count:4, dailyRateRange:[950,1300], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Diploma':35,'Graduate':50,'ITI':15}, trainingTitles:['Surveying Equipment Safety','Total Station Operation Safety'] },
-  { name:'QC Inspector', category:'Supervisory', count:2, dailyRateRange:[1050,1550], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'QC Inspector', category:'Supervisory', count:4, dailyRateRange:[1050,1550], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Diploma':25,'Graduate':60,'ITI':15}, trainingTitles:['Quality Control & Safety Standards','Concrete Testing Procedures'] },
-  { name:'Site Engineer', category:'Supervisory', count:1, dailyRateRange:[1500,2200], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Site Engineer', category:'Supervisory', count:3, dailyRateRange:[1500,2200], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'Graduate':100}, trainingTitles:['Site Engineering & Safety Management','Construction Management Safety','Advanced Safety Leadership'] },
-  { name:'Foreman', category:'Supervisory', count:1, dailyRateRange:[1000,1450], wageCategory:'Skilled', skillLevel:'Skilled',
+  { name:'Foreman', category:'Supervisory', count:3, dailyRateRange:[1000,1450], wageCategory:'Skilled', skillLevel:'Skilled',
     qualWeights:{'12th':20,'ITI':25,'Diploma':30,'Graduate':25}, trainingTitles:['Foreman Safety Responsibilities','Workforce Management & Safety','Tool & Equipment Safety'] },
 ]
 
@@ -269,37 +269,34 @@ export async function runDemoSeed(db: PrismaClient): Promise<Record<string, numb
 
   // ─── STEP 1: DELETE ALL EXISTING DATA ─────────────────────────────
   console.log('[SEED] Clearing existing data...')
-  const deleteOps = [
-    db.auditLog.deleteMany(),
-    db.notification.deleteMany(),
-    db.grievance.deleteMany(),
-    db.incidentFollowUp.deleteMany(),
-    db.incidentWorker.deleteMany(),
-    db.incident.deleteMany(),
-    db.materialTransaction.deleteMany(),
-    db.hazardousMaterial.deleteMany(),
-    db.vehicleDocument.deleteMany(),
-    db.vehicle.deleteMany(),
-    db.attendance.deleteMany(),
-    db.insurance.deleteMany(),
-    db.wageRecord.deleteMany(),
-    db.trainingRecord.deleteMany(),
-    db.medicalRecord.deleteMany(),
-    db.workerFitness.deleteMany(),
-    db.nominee.deleteMany(),
-    db.emergencyContact.deleteMany(),
-    db.worker.deleteMany(),
-    db.systemUser.deleteMany(),
-    db.labourCamp.deleteMany(),
-    db.siteFacility.deleteMany(),
-    db.siteSecurityItem.deleteMany(),
-    db.medInfraItem.deleteMany(),
-    db.legalCompliance.deleteMany(),
-    db.site.deleteMany(),
-    db.designation.deleteMany(),
-    db.contractor.deleteMany(),
-  ]
-  await Promise.all(deleteOps)
+  await db.auditLog.deleteMany()
+  await db.notification.deleteMany()
+  await db.grievance.deleteMany()
+  await db.incidentFollowUp.deleteMany()
+  await db.incidentWorker.deleteMany()
+  await db.incident.deleteMany()
+  await db.materialTransaction.deleteMany()
+  await db.hazardousMaterial.deleteMany()
+  await db.vehicleDocument.deleteMany()
+  await db.vehicle.deleteMany()
+  await db.attendance.deleteMany()
+  await db.insurance.deleteMany()
+  await db.wageRecord.deleteMany()
+  await db.trainingRecord.deleteMany()
+  await db.medicalRecord.deleteMany()
+  await db.workerFitness.deleteMany()
+  await db.nominee.deleteMany()
+  await db.emergencyContact.deleteMany()
+  await db.worker.deleteMany()
+  await db.systemUser.deleteMany()
+  await db.labourCamp.deleteMany()
+  await db.siteFacility.deleteMany()
+  await db.siteSecurityItem.deleteMany()
+  await db.medInfraItem.deleteMany()
+  await db.legalCompliance.deleteMany()
+  await db.site.deleteMany()
+  await db.designation.deleteMany()
+  await db.contractor.deleteMany()
   console.log('[SEED] All data cleared.')
 
   // ─── STEP 2: MASTER DATA ──────────────────────────────────────────

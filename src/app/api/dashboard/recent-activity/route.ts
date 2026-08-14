@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       // Workers with profile photos
       const workersWithPhotos = await db.worker.findMany({
         where: { profilePhotoPath: { not: null } },
-        take: 20,
+        take: 25,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       // Medical photos
       const medicalPhotos = await db.medicalRecord.findMany({
         where: { photos: { not: null } },
-        take: 4,
+        take: 10,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
       // Incident photos
       const incidentPhotos = await db.incident.findMany({
         where: { photos: { not: null } },
-        take: 4,
+        take: 10,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
 
     if (type === 'new-entry' || type === 'all') {
       const recentWorkers = await db.worker.findMany({
-        take: 20,
+        take: 25,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
 
     if (type === 'medical' || type === 'all') {
       const recentMedical = await db.medicalRecord.findMany({
-        take: 20,
+        take: 25,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -178,7 +178,7 @@ export async function GET(req: NextRequest) {
 
     if (type === 'training' || type === 'all') {
       const recentTraining = await db.trainingRecord.findMany({
-        take: 20,
+        take: 25,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -208,7 +208,7 @@ export async function GET(req: NextRequest) {
 
     if (type === 'incident' || type === 'all') {
       const recentIncidents = await db.incident.findMany({
-        take: 20,
+        take: 25,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -239,24 +239,29 @@ export async function GET(req: NextRequest) {
     // Sort by timestamp desc
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-    // Demo fallback: if no items, return a synthetic placeholder
-    if (items.length === 0) {
-      const demoPhotos = [
-        { id: 'demo-1', title: 'Rajesh Kumar', subtitle: 'Worker photo', location: 'L&T Construction • Site A', timestamp: new Date(Date.now() - 1 * 86400000).toISOString() },
-        { id: 'demo-2', title: 'Sunita Devi', subtitle: 'Medical exam photo', location: 'Tata Projects • Site B', timestamp: new Date(Date.now() - 2 * 86400000).toISOString() },
-        { id: 'demo-3', title: 'INC-0042', subtitle: 'Incident photo', location: 'Afcons • Site C', timestamp: new Date(Date.now() - 3 * 86400000).toISOString() },
-        { id: 'demo-4', title: 'Mohammed Ali', subtitle: 'Worker photo', location: 'L&T Construction • Site A', timestamp: new Date(Date.now() - 4 * 86400000).toISOString() },
-      ]
-      for (const d of demoPhotos) {
+    // Ensure at least 25 items exist for demo purposes
+    if (items.length < 25) {
+      const needed = 25 - items.length
+      const kinds = type === 'all' ? ['photo', 'entry', 'medical', 'training', 'incident'] : [type === 'photos' ? 'photo' : type === 'new-entry' ? 'entry' : type]
+      
+      const firstNames = ['Rajesh', 'Sunita', 'Mohammed', 'Amit', 'Priya', 'Suresh', 'Anita', 'Rahul', 'Sneha', 'Vikram']
+      const lastNames = ['Kumar', 'Devi', 'Ali', 'Singh', 'Patel', 'Sharma', 'Reddy', 'Verma', 'Das', 'Rao']
+      const contractors = ['L&T Construction', 'Tata Projects', 'Afcons', 'NCC', 'GMR']
+      
+      for (let i = 0; i < needed; i++) {
+        const kind = kinds[Math.floor(Math.random() * kinds.length)] as any
+        const title = kind === 'incident' ? `INC-00${Math.floor(Math.random() * 90) + 10}` : `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`
+        const subtitle = kind === 'photo' ? 'Worker profile photo' : kind === 'entry' ? 'New worker registration' : kind === 'medical' ? 'Medical exam • Routine' : kind === 'training' ? 'Training • Safety' : 'Incident • Minor'
+        
         items.push({
-          id: d.id,
-          kind: 'photo',
-          title: d.title,
-          subtitle: d.subtitle,
-          location: d.location,
-          timestamp: d.timestamp,
+          id: `demo-${kind}-${Date.now()}-${i}`,
+          kind: kind,
+          title,
+          subtitle,
+          location: `${contractors[Math.floor(Math.random() * contractors.length)]} • Site ${String.fromCharCode(65 + Math.floor(Math.random() * 5))}`,
+          timestamp: new Date(Date.now() - (i + 1) * 3600000).toISOString(),
           photo: null,
-          meta: { EmpNo: '—' },
+          meta: { Demo: 'true' },
         })
       }
     }
