@@ -702,16 +702,16 @@ export default function DashboardView() {
 
   return (
     <div className="h-full flex flex-col gap-2 overflow-hidden">
-      {/* ────── Hero Header with 1/4 Greeting & 3/4 Filters ────── */}
+      {/* ────── Hero Header with 1/4 Greeting & Compact 50% Width Filters ────── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
         className="shrink-0 rounded-xl bg-gradient-to-r from-teal-50 via-cyan-50/80 to-teal-50/60 border border-teal-100/70 p-2 sm:px-3 sm:py-1.5 shadow-2xs"
       >
-        <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 w-full">
-          {/* 1/4 Left: Good Morning Greeting */}
-          <div className="lg:w-1/4 shrink-0 flex items-center justify-between lg:pr-3 lg:border-r lg:border-teal-200/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+          {/* Left: Good Morning Greeting */}
+          <div className="shrink-0 flex items-center gap-3">
             <div className="min-w-0">
               <h1 className="text-sm font-bold tracking-tight text-slate-800 truncate flex items-center gap-1.5">
                 <span>{getGreeting()}</span>
@@ -728,28 +728,26 @@ export default function DashboardView() {
             </div>
           </div>
 
-          {/* 3/4 Right: Filters (Date, Project, Contractor) */}
-          <div className="lg:w-3/4 flex-1 flex flex-wrap sm:flex-nowrap items-center gap-2">
+          {/* Right: Filters decreased in width by 50% (compact, right-aligned) */}
+          <div className="flex items-center justify-end flex-wrap sm:flex-nowrap gap-1.5 shrink-0 max-w-full sm:max-w-[50%]">
             {/* Date Filter */}
-            <div className="flex-1 min-w-[130px] sm:min-w-[140px] relative flex items-center h-8 rounded-lg border border-teal-200/80 bg-white/95 px-2.5 text-xs shadow-2xs hover:border-teal-400 focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all">
-              <Calendar className="h-3.5 w-3.5 text-teal-600 mr-1.5 shrink-0 pointer-events-none" />
-              <span className="text-[10px] font-bold uppercase text-slate-400 mr-1.5 shrink-0 pointer-events-none">Date:</span>
+            <div className="w-32 sm:w-36 relative flex items-center h-7.5 rounded-lg border border-teal-200/80 bg-white/95 px-2 text-xs shadow-2xs hover:border-teal-400 focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all shrink-0">
+              <Calendar className="h-3 w-3 text-teal-600 mr-1 shrink-0 pointer-events-none" />
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent border-0 outline-none text-xs font-semibold text-slate-800 w-full cursor-pointer p-0"
+                className="bg-transparent border-0 outline-none text-[11px] font-semibold text-slate-800 w-full cursor-pointer p-0"
               />
             </div>
 
             {/* Project Filter */}
-            <div className="flex-1 min-w-[140px] sm:min-w-[150px] relative flex items-center h-8 rounded-lg border border-teal-200/80 bg-white/95 px-2 text-xs shadow-2xs hover:border-teal-400 transition-all">
-              <Building2 className="h-3.5 w-3.5 text-teal-600 mr-1.5 shrink-0 pointer-events-none" />
-              <span className="text-[10px] font-bold uppercase text-slate-400 mr-1 shrink-0 pointer-events-none">Project:</span>
+            <div className="w-32 sm:w-36 relative flex items-center h-7.5 rounded-lg border border-teal-200/80 bg-white/95 px-1.5 text-xs shadow-2xs hover:border-teal-400 transition-all shrink-0">
+              <Building2 className="h-3 w-3 text-teal-600 mr-1 shrink-0 pointer-events-none" />
               <select
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                className="bg-transparent border-0 outline-none text-xs font-semibold text-slate-800 w-full cursor-pointer pr-2 py-1 truncate focus:ring-0"
+                className="bg-transparent border-0 outline-none text-[11px] font-semibold text-slate-800 w-full cursor-pointer pr-1 py-0.5 truncate focus:ring-0"
               >
                 <option value="all">All Projects {sites && Array.isArray(sites) ? `(${sites.length})` : ''}</option>
                 {sites && Array.isArray(sites) && sites.map((s: any) => (
@@ -761,13 +759,12 @@ export default function DashboardView() {
             </div>
 
             {/* Contractor Filter */}
-            <div className="flex-1 min-w-[140px] sm:min-w-[150px] relative flex items-center h-8 rounded-lg border border-teal-200/80 bg-white/95 px-2 text-xs shadow-2xs hover:border-teal-400 transition-all">
-              <HardHat className="h-3.5 w-3.5 text-teal-600 mr-1.5 shrink-0 pointer-events-none" />
-              <span className="text-[10px] font-bold uppercase text-slate-400 mr-1 shrink-0 pointer-events-none">Contractor:</span>
+            <div className="w-32 sm:w-36 relative flex items-center h-7.5 rounded-lg border border-teal-200/80 bg-white/95 px-1.5 text-xs shadow-2xs hover:border-teal-400 transition-all shrink-0">
+              <HardHat className="h-3 w-3 text-teal-600 mr-1 shrink-0 pointer-events-none" />
               <select
                 value={selectedContractor}
                 onChange={(e) => setSelectedContractor(e.target.value)}
-                className="bg-transparent border-0 outline-none text-xs font-semibold text-slate-800 w-full cursor-pointer pr-2 py-1 truncate focus:ring-0"
+                className="bg-transparent border-0 outline-none text-[11px] font-semibold text-slate-800 w-full cursor-pointer pr-1 py-0.5 truncate focus:ring-0"
               >
                 <option value="all">All Contractors {contractors && Array.isArray(contractors) ? `(${contractors.length})` : ''}</option>
                 {contractors && Array.isArray(contractors) && contractors.map((c: any) => (
@@ -784,11 +781,11 @@ export default function DashboardView() {
                 variant="ghost"
                 size="sm"
                 onClick={handleResetFilters}
-                className="h-8 px-2 text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg shrink-0 gap-1"
+                className="h-7.5 px-1.5 text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg shrink-0 gap-1"
                 title="Reset Filters"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline text-[11px] font-medium">Reset</span>
+                <RotateCcw className="h-3 w-3" />
+                <span className="hidden md:inline text-[10px] font-medium">Reset</span>
               </Button>
             )}
           </div>
