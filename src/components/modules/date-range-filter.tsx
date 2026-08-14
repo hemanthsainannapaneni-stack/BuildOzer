@@ -179,9 +179,6 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
     setOpen(false)
   }
 
-  const nextMonth = calMonth === 11 ? 0 : calMonth + 1
-  const nextYear  = calMonth === 11 ? calYear + 1 : calYear
-
   function prevCal() { if (calMonth === 0) { setCalYear(y => y-1); setCalMonth(11) } else setCalMonth(m => m-1) }
   function nextCal() { if (calMonth === 11) { setCalYear(y => y+1); setCalMonth(0) } else setCalMonth(m => m+1) }
 
@@ -233,9 +230,8 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
                 )}
               </div>
 
-              <div className="flex gap-4">
+              <div>
                 <MiniCal year={calYear} month={calMonth} fromStr={customFrom} toStr={customTo} hoverStr={hoverStr} selectingFrom={selectingFrom} onDayClick={handleDayClick} onDayHover={setHoverStr} onPrev={prevCal} onNext={nextCal} />
-                <MiniCal year={nextYear} month={nextMonth} fromStr={customFrom} toStr={customTo} hoverStr={hoverStr} selectingFrom={selectingFrom} onDayClick={handleDayClick} onDayHover={setHoverStr} onPrev={prevCal} onNext={nextCal} />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
