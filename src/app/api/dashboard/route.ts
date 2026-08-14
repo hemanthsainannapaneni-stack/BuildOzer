@@ -5,16 +5,30 @@ import { db } from '@/lib/db'
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const dateParam = searchParams.get('date')
-    const siteId = searchParams.get('siteId') || searchParams.get('project')
+    const dateParam    = searchParams.get('date')
+    const dateFromParam = searchParams.get('dateFrom')
+    const dateToParam   = searchParams.get('dateTo')
+    const siteId       = searchParams.get('siteId') || searchParams.get('project')
     const contractorId = searchParams.get('contractorId') || searchParams.get('contractor')
-    const campId = searchParams.get('campId') || searchParams.get('labourCampId') || searchParams.get('camp')
+    const campId       = searchParams.get('campId') || searchParams.get('labourCampId') || searchParams.get('camp')
 
-    // Determine target date for attendance
-    const targetDate = dateParam ? new Date(dateParam) : new Date()
-    targetDate.setUTCHours(0, 0, 0, 0)
-    const nextDay = new Date(targetDate)
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+    // Determine date range for attendance queries
+    // If dateFrom/dateTo provided use range, else fall back to single date or today
+    let rangeFrom: Date, rangeTo: Date
+    if (dateFromParam) {
+      rangeFrom = new Date(dateFromParam); rangeFrom.setUTCHours(0,0,0,0)
+      const toBase = dateToParam ? new Date(dateToParam) : new Date(dateFromParam)
+      toBase.setUTCHours(23,59,59,999)
+      rangeTo = toBase
+    } else {
+      const targetDate = dateParam ? new Date(dateParam) : new Date()
+      targetDate.setUTCHours(0,0,0,0)
+      rangeFrom = targetDate
+      const nd = new Date(targetDate); nd.setUTCDate(nd.getUTCDate() + 1); nd.setUTCHours(0,0,0,0)
+      rangeTo = nd
+      // For single-day, use lt next day (original behavior)
+      rangeTo = nd
+    }
 
     // Base filter objects
     const workerWhere: any = {}
@@ -44,8 +58,8 @@ export async function GET(req: NextRequest) {
 
     const attendanceWhere: any = {
       date: {
-        gte: targetDate,
-        lt: nextDay,
+        gte: rangeFrom,
+        lt: rangeTo,
       },
       status: 'Present',
       ...(hasWorkerFilter ? { worker: workerRelationFilter } : {}),

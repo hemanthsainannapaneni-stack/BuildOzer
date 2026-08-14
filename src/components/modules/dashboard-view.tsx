@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DateRangeFilter, type DateRangeValue } from '@/components/modules/date-range-filter'
 import {
   Users,
   UserPlus,
@@ -577,7 +578,12 @@ export default function DashboardView() {
 
   // Filter states
   const todayDateStr = new Date().toISOString().split('T')[0]
-  const [selectedDate, setSelectedDate] = useState<string>(todayDateStr)
+  const [dateRange, setDateRange] = useState<DateRangeValue>({
+    preset: 'today',
+    dateFrom: todayDateStr,
+    dateTo: todayDateStr,
+    label: 'Today',
+  })
   const [selectedProject, setSelectedProject] = useState<string>('all')
   const [selectedContractor, setSelectedContractor] = useState<string>('all')
   const [selectedCamp, setSelectedCamp] = useState<string>('all')
@@ -603,10 +609,11 @@ export default function DashboardView() {
   })
 
   const { data: dash, isLoading } = useQuery<DashboardData>({
-    queryKey: ['dashboard', selectedDate, selectedProject, selectedContractor, selectedCamp],
+    queryKey: ['dashboard', dateRange.dateFrom, dateRange.dateTo, selectedProject, selectedContractor, selectedCamp],
     queryFn: () => {
       const params = new URLSearchParams()
-      if (selectedDate) params.append('date', selectedDate)
+      params.append('dateFrom', dateRange.dateFrom)
+      params.append('dateTo', dateRange.dateTo)
       if (selectedProject && selectedProject !== 'all') params.append('siteId', selectedProject)
       if (selectedContractor && selectedContractor !== 'all') params.append('contractorId', selectedContractor)
       if (selectedCamp && selectedCamp !== 'all') params.append('campId', selectedCamp)
@@ -615,9 +622,11 @@ export default function DashboardView() {
   })
 
   const { data: activityData } = useQuery<{ items: ActivityItem[]; count: number }>({
-    queryKey: ['dashboard', 'recent-activity', activeTab, selectedProject, selectedContractor, selectedCamp],
+    queryKey: ['dashboard', 'recent-activity', activeTab, dateRange.dateFrom, dateRange.dateTo, selectedProject, selectedContractor, selectedCamp],
     queryFn: () => {
       const params = new URLSearchParams({ type: activeTab })
+      params.append('dateFrom', dateRange.dateFrom)
+      params.append('dateTo', dateRange.dateTo)
       if (selectedProject && selectedProject !== 'all') params.append('siteId', selectedProject)
       if (selectedContractor && selectedContractor !== 'all') params.append('contractorId', selectedContractor)
       if (selectedCamp && selectedCamp !== 'all') params.append('campId', selectedCamp)
@@ -625,10 +634,10 @@ export default function DashboardView() {
     },
   })
 
-  const hasActiveFilters = selectedProject !== 'all' || selectedContractor !== 'all' || selectedCamp !== 'all' || selectedDate !== todayDateStr
+  const hasActiveFilters = selectedProject !== 'all' || selectedContractor !== 'all' || selectedCamp !== 'all' || dateRange.preset !== 'today'
 
   const handleResetFilters = () => {
-    setSelectedDate(todayDateStr)
+    setDateRange({ preset: 'today', dateFrom: todayDateStr, dateTo: todayDateStr, label: 'Today' })
     setSelectedProject('all')
     setSelectedContractor('all')
     setSelectedCamp('all')
@@ -745,16 +754,8 @@ export default function DashboardView() {
 
           {/* Right: Filters decreased in width by 50% (compact, right-aligned) */}
           <div className="flex items-center justify-end flex-wrap sm:flex-nowrap gap-1.5 shrink-0 max-w-full sm:max-w-[50%]">
-            {/* Date Filter */}
-            <div className="w-32 sm:w-36 relative flex items-center h-7.5 rounded-lg border border-teal-200/80 bg-white/95 px-2 text-xs shadow-2xs hover:border-teal-400 focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all shrink-0">
-              <Calendar className="h-3 w-3 text-teal-600 mr-1 shrink-0 pointer-events-none" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent border-0 outline-none text-[11px] font-semibold text-slate-800 w-full cursor-pointer p-0"
-              />
-            </div>
+            {/* Date Range Filter */}
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
 
             {/* Project Filter */}
             <div className="w-32 sm:w-36 relative flex items-center h-7.5 rounded-lg border border-teal-200/80 bg-white/95 px-1.5 text-xs shadow-2xs hover:border-teal-400 transition-all shrink-0">
