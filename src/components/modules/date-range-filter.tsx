@@ -51,11 +51,8 @@ function getPresetRange(preset: string): { from: Date; to: Date } {
 const PRESETS = [
   { id: 'today',     label: 'Today' },
   { id: 'yesterday', label: 'Yesterday' },
-  { id: 'thisWeek',  label: 'This Week' },
   { id: 'last7',     label: 'Last 7 Days' },
   { id: 'last30',    label: 'Last 30 Days' },
-  { id: 'thisMonth', label: 'This Month' },
-  { id: 'lastMonth', label: 'Last Month' },
   { id: 'custom',    label: 'Custom Range' },
 ]
 
