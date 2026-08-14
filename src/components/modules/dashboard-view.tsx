@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DateRangeFilter, type DateRangeValue } from '@/components/modules/date-range-filter'
@@ -503,7 +503,7 @@ function ActivityCard({ className }: { className?: string }) {
 
 function ActivityPhoto({ photo, name }: { photo?: string | null; name: string }) {
   if (photo && photo.startsWith('data:')) {
-    return <img src={photo} alt={name} className="w-9 h-9 rounded-md object-cover shrink-0" />
+    return <img src={photo} alt={name} className="w-7 h-7 rounded-md object-cover shrink-0" />
   }
   const initials = name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
   return (
@@ -515,7 +515,7 @@ function ActivityPhoto({ photo, name }: { photo?: string | null; name: string })
 
 function RecentActivityItem({ item, onPhotoClick }: { item: ActivityItem; onPhotoClick?: (item: ActivityItem) => void }) {
   return (
-    <div className="flex items-start gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors cursor-default">
+    <div className="flex items-start gap-1 p-1 rounded-sm hover:bg-slate-50 transition-colors cursor-default">
       <button
         onClick={() => onPhotoClick?.(item)}
         className="shrink-0 focus:outline-none focus:ring-2 focus:ring-teal-300 rounded-md"
@@ -573,7 +573,7 @@ export default function DashboardView() {
   const setPage = useNavStore(s => s.setPage)
   const openWorkerForm = useNavStore(s => s.openWorkerForm)
   const openIncidentForm = useNavStore(s => s.openIncidentForm)
-  const [activeTab, setActiveTab] = useState<'photos' | 'new-entry' | 'medical' | 'training' | 'incident'>('photos')
+  const [activeTab, setActiveTab] = useState<'photos' | 'new-entry' | 'medical' | 'training' | 'incident'>('new-entry')
   const [previewPhoto, setPreviewPhoto] = useState<ActivityItem | null>(null)
 
   // Filter states
@@ -715,9 +715,44 @@ export default function DashboardView() {
   // Activity items
   const activityItems = activityData?.items ?? []
 
+  // Build photos array: prefer real photos, but ensure at least 3 thumbnails by appending dummy placeholders
+  const photoItems = (() => {
+    const photos = (activityItems.filter(i => i.photo) as ActivityItem[]).slice()
+    const placeholders = ['/slideshow/slide1.jpg', '/slideshow/slide2.jpg', '/slideshow/slide3.jpg']
+    let idx = 0
+    while (photos.length < 3 && idx < placeholders.length) {
+      photos.push({
+        id: `dummy-${idx}`,
+        kind: 'photo',
+        title: `Sample Photo ${idx + 1}`,
+        subtitle: '',
+        timestamp: new Date().toISOString(),
+        photo: placeholders[idx],
+      } as ActivityItem)
+      idx++
+    }
+    return photos
+  })()
+
+  // Auto-scroll carousel for photos (single visible at a time)
+  const photoStripRef = useRef<HTMLDivElement | null>(null)
+  const [photoIndex, setPhotoIndex] = useState(0)
+
+  useEffect(() => {
+    if (!photoItems || photoItems.length === 0) return
+    const t = setInterval(() => setPhotoIndex(i => (i + 1) % photoItems.length), 3000)
+    return () => clearInterval(t)
+  }, [photoItems.length])
+
+  useEffect(() => {
+    const el = photoStripRef.current
+    if (!el) return
+    const width = el.clientWidth
+    el.scrollTo({ left: photoIndex * width, behavior: 'smooth' })
+  }, [photoIndex])
+
   // Tab config
   const tabs = [
-    { id: 'photos' as const, label: 'Photos' },
     { id: 'new-entry' as const, label: 'New Entry' },
     { id: 'medical' as const, label: 'Medical' },
     { id: 'training' as const, label: 'Training' },
@@ -859,7 +894,7 @@ export default function DashboardView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
             className="grid min-h-0"
-            style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}
+            style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}
           >
             <StatCard
               title="Equipment Status"
@@ -901,7 +936,6 @@ export default function DashboardView() {
               subtitle="Clearance rate"
               segments={approvalData.map(d => ({ label: d.name, value: d.value, color: d.color }))}
             />
-            <ActivityCard />
           </motion.div>
 
           {/* Row 3: Camps per Contractor (268px) + Workforce per Camp (flex) */}
@@ -957,51 +991,86 @@ export default function DashboardView() {
           transition={{ duration: 0.4, delay: 0.15 }}
           className="overflow-hidden"
         >
-          <Card className="h-full overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col">
-            <CardHeader className="p-3 pb-0 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1.5">
-                  <Activity className="h-3.5 w-3.5 text-teal-600" />
+          <div className="h-full flex flex-col gap-1">
+            {/* Top: Recent Activity card (70% height) */}
+            <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col" style={{ flex: '0 0 57%' }}>
+              <CardHeader className="p-1 pb-0 shrink-0">
+                <div className="flex items-center gap-1">
+                  <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
+                    <Activity className="h-3 w-3 text-teal-600" />
+                  </div>
+                  <CardTitle className="text-sm font-extrabold text-slate-700">Recent Activity</CardTitle>
                 </div>
-                <CardTitle className="text-sm font-extrabold text-slate-700">Recent Activity</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="px-2 pb-2 pt-0 flex-1 min-h-0 flex flex-col">
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 min-h-0 flex flex-col">
-                <TabsList className="w-full flex gap-1 bg-slate-100/70 p-1 h-auto mb-0">
+              </CardHeader>
+
+              <CardContent className="px-1 pb-1 pt-0 flex-1 min-h-0">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="h-full flex flex-col">
+                  <TabsList className="w-full flex gap-0.5 bg-slate-100/70 p-0.5 h-auto mb-0">
+                    {tabs.map(t => (
+                      <TabsTrigger key={t.id} value={t.id} className={cn('flex-1 text-[10px] py-1 rounded-md font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-sm text-slate-500 hover:text-slate-700')}>{t.label}</TabsTrigger>
+                    ))}
+                  </TabsList>
+
                   {tabs.map(t => (
-                    <TabsTrigger key={t.id} value={t.id} className={cn('flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-sm text-slate-500 hover:text-slate-700')}>{t.label}</TabsTrigger>
+                    <TabsContent key={t.id} value={t.id} className="mt-0 flex-1 min-h-0">
+                      <ScrollArea className="h-full pr-1">
+                        <div className="space-y-0">
+                          {activityItems.length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-8">No recent activity</p>
+                          ) : (
+                            <AnimatePresence mode="popLayout">
+                              {activityItems.map((item) => (
+                                <motion.div key={item.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.2 }} className="flex items-start gap-1 p-1 rounded-sm hover:bg-slate-50 transition-colors cursor-default" onClick={() => item.photo && setPreviewPhoto(item)}>
+                                  {item.photo ? (<img src={item.photo} alt={item.title} className="w-7 h-7 rounded-md object-cover shrink-0" />) : (<div className="w-7 h-7 rounded-md bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{item.title.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}</div>)}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-medium text-slate-700 truncate">{item.title}</p>
+                                    <p className="text-[10px] text-slate-500 truncate">{item.subtitle}</p>
+                                    {item.location && (<p className="text-[10px] text-slate-400 truncate flex items-center gap-0.5 mt-0.5"><MapPin className="h-2.5 w-2.5" />{item.location}</p>)}
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0 mt-0.5">{formatRelativeTime(item.timestamp)}</span>
+                                </motion.div>
+                              ))}
+                            </AnimatePresence>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </TabsContent>
                   ))}
-                </TabsList>
-                {tabs.map(t => (
-                  <TabsContent key={t.id} value={t.id} className="mt-0 flex-1 min-h-0">
-                    <ScrollArea className="h-full pr-1">
-                      <div className="space-y-0.5">
-                        {activityItems.length === 0 ? (
-                          <p className="text-xs text-slate-400 text-center py-8">No recent activity</p>
-                        ) : (
-                          <AnimatePresence mode="popLayout">
-                            {activityItems.map((item) => (
-                              <motion.div key={item.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.2 }} className="flex items-start gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors cursor-default" onClick={() => item.photo && setPreviewPhoto(item)}>
-                                {item.photo ? (<img src={item.photo} alt={item.title} className="w-9 h-9 rounded-md object-cover shrink-0" />) : (<div className="w-9 h-9 rounded-md bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{item.title.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}</div>)}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-[11px] font-medium text-slate-700 truncate">{item.title}</p>
-                                  <p className="text-[10px] text-slate-500 truncate">{item.subtitle}</p>
-                                  {item.location && (<p className="text-[10px] text-slate-400 truncate flex items-center gap-0.5 mt-0.5"><MapPin className="h-2.5 w-2.5" />{item.location}</p>)}
-                                </div>
-                                <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0 mt-0.5">{formatRelativeTime(item.timestamp)}</span>
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-                        )}
+
+                </Tabs>
+              </CardContent>
+            </Card>
+
+            {/* Bottom: Photos card (30% height) */}
+            <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col" style={{ flex: '0 0 36%' }}>
+              <CardHeader className="p-1 pb-0 shrink-0">
+                <div className="flex items-center gap-1">
+                  <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
+                    <Activity className="h-3 w-3 text-teal-600" />
+                  </div>
+                  <CardTitle className="text-sm font-extrabold text-slate-700">Photos</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="px-1 pb-1 pt-1 flex-1 min-h-0">
+                <div ref={photoStripRef} className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth w-full h-full">
+                  {photoItems.length === 0 ? (
+                    <div className="flex items-center justify-center w-full"><p className="text-xs text-slate-400">No photos available</p></div>
+                  ) : (
+                    photoItems.map((item) => (
+                      <div key={item.id} className="snap-start flex-none w-full px-0">
+                        <button onClick={() => setPreviewPhoto(item)} className="w-full h-full rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-teal-300">
+                          <img src={item.photo!} alt={item.title} className="w-full h-44 object-cover rounded-md" />
+                        </button>
                       </div>
-                    </ScrollArea>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            </CardContent>
-          </Card>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+          </div>
         </motion.div>
+
       </div>
 
       {/* Photo Preview Dialog */}
