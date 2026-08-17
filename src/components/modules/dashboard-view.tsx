@@ -583,6 +583,56 @@ function DashboardSkeleton() {
   )
 }
 
+// ──────────────────── Photos Card ────────────────────
+// Owns its own auto-scroll state so the 3s carousel tick re-renders only this
+// card. Keeping the timer in DashboardView re-rendered the charts every tick,
+// which made the Workforce per Camp bars replay their grow animation.
+function PhotoCarouselCard({ items, onSelect }: { items: ActivityItem[]; onSelect: (item: ActivityItem) => void }) {
+  const stripRef = useRef<HTMLDivElement | null>(null)
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    if (items.length === 0) return
+    const t = setInterval(() => setIndex(i => (i + 1) % items.length), 3000)
+    return () => clearInterval(t)
+  }, [items.length])
+
+  useEffect(() => {
+    const el = stripRef.current
+    if (!el) return
+    const width = el.clientWidth
+    el.scrollTo({ left: index * width, behavior: 'smooth' })
+  }, [index])
+
+  return (
+    <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col" style={{ flex: '0 0 36%' }}>
+      <CardHeader className="p-1 pb-0 shrink-0">
+        <div className="flex items-center gap-1">
+          <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
+            <Activity className="h-3 w-3 text-teal-600" />
+          </div>
+          <CardTitle className="text-sm font-extrabold text-slate-700">Photos</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="px-1 pb-1 pt-1 flex-1 min-h-0">
+        <div ref={stripRef} className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth w-full h-full">
+          {items.length === 0 ? (
+            <div className="flex items-center justify-center w-full"><p className="text-xs text-slate-400">No photos available</p></div>
+          ) : (
+            items.map((item) => (
+              <div key={item.id} className="snap-start flex-none w-full px-0">
+                <button onClick={() => onSelect(item)} className="w-full h-full rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-teal-300">
+                  <img src={item.photo!} alt={item.title} className="w-full h-44 object-cover rounded-md" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ──────────────────── Main Component ────────────────────
 
 export default function DashboardView() {
@@ -671,25 +721,6 @@ export default function DashboardView() {
     }
     return photos
   })()
-
-  // Auto-scroll carousel for photos (single visible at a time).
-  // These hooks must stay above the isLoading early return — declaring them after it
-  // changes the hook count between renders and crashes React.
-  const photoStripRef = useRef<HTMLDivElement | null>(null)
-  const [photoIndex, setPhotoIndex] = useState(0)
-
-  useEffect(() => {
-    if (photoItems.length === 0) return
-    const t = setInterval(() => setPhotoIndex(i => (i + 1) % photoItems.length), 3000)
-    return () => clearInterval(t)
-  }, [photoItems.length])
-
-  useEffect(() => {
-    const el = photoStripRef.current
-    if (!el) return
-    const width = el.clientWidth
-    el.scrollTo({ left: photoIndex * width, behavior: 'smooth' })
-  }, [photoIndex])
 
   const hasActiveFilters = selectedProject !== 'all' || selectedContractor !== 'all' || selectedCamp !== 'all' || dateRange.preset !== 'today'
 
@@ -884,6 +915,7 @@ export default function DashboardView() {
         style={{
           gridTemplateColumns: '1fr 372px',
           gap: '8px',
+          scrollbarGutter: 'stable',
         }}
       >
         {/* LEFT: Dashboard area — 3 rows (KPI / Donuts / Camps) + Quick Actions */}
@@ -1008,8 +1040,9 @@ export default function DashboardView() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.15 }}
           className="overflow-hidden"
+          style={{ scrollbarGutter: 'stable' }}
         >
-          <div className="h-full flex flex-col gap-1">
+          <div className="h-full flex flex-col gap-1" style={{ scrollbarGutter: 'stable' }}>
             {/* Top: Recent Activity card (70% height) */}
             <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col" style={{ flex: '0 0 57%' }}>
               <CardHeader className="p-1 pb-0 shrink-0">
@@ -1031,7 +1064,7 @@ export default function DashboardView() {
 
                   {tabs.map(t => (
                     <TabsContent key={t.id} value={t.id} className="mt-0 flex-1 min-h-0">
-                      <ScrollArea className="h-full pr-1">
+                      <ScrollArea className="h-full pr-1" style={{ scrollbarGutter: 'stable' }}>
                         <div className="space-y-0">
                           {activityItems.length === 0 ? (
                             <p className="text-xs text-slate-400 text-center py-3">No recent activity</p>
@@ -1060,31 +1093,7 @@ export default function DashboardView() {
             </Card>
 
             {/* Bottom: Photos card (30% height) */}
-            <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col" style={{ flex: '0 0 36%' }}>
-              <CardHeader className="p-1 pb-0 shrink-0">
-                <div className="flex items-center gap-1">
-                  <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
-                    <Activity className="h-3 w-3 text-teal-600" />
-                  </div>
-                  <CardTitle className="text-sm font-extrabold text-slate-700">Photos</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="px-1 pb-1 pt-1 flex-1 min-h-0">
-                <div ref={photoStripRef} className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth w-full h-full">
-                  {photoItems.length === 0 ? (
-                    <div className="flex items-center justify-center w-full"><p className="text-xs text-slate-400">No photos available</p></div>
-                  ) : (
-                    photoItems.map((item) => (
-                      <div key={item.id} className="snap-start flex-none w-full px-0">
-                        <button onClick={() => setPreviewPhoto(item)} className="w-full h-full rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-teal-300">
-                          <img src={item.photo!} alt={item.title} className="w-full h-44 object-cover rounded-md" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <PhotoCarouselCard items={photoItems} onSelect={setPreviewPhoto} />
 
           </div>
         </motion.div>
