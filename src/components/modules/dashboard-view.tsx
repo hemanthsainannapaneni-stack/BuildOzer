@@ -198,7 +198,7 @@ function StatCard({ title, icon: Icon, iconBg, bigNumber, unit, subtitle, segmen
   // 4+ segments means a third tile row — shrink the numerals so it still fits the card.
   const valueSize = segments.length >= 4 ? 'text-sm' : 'text-base'
   return (
-    <Card className="h-full overflow-hidden border-slate-200/70 bg-white shadow-sm">
+    <Card className="h-full overflow-hidden border-slate-200/70 bg-white shadow-sm py-0 gap-0">
       <CardContent className="p-1.5 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-1.5 shrink-0">
@@ -355,7 +355,7 @@ interface RankedListCardProps {
 function RankedListCard({ title, icon: Icon, items, colorPool = CONTRACTOR_COLORS, className }: RankedListCardProps) {
   const maxVal = Math.max(...items.map(d => d.value), 1)
   return (
-    <Card className={cn('overflow-hidden border-slate-200 bg-white shadow-sm h-full flex flex-col', className)}>
+    <Card className={cn('overflow-hidden border-slate-200 bg-white shadow-sm h-full flex flex-col py-0 gap-0', className)}>
       <CardHeader className="px-3 pt-2 pb-1 shrink-0">
         <div className="flex items-center gap-2">
           <div className="rounded-md bg-gradient-to-br from-violet-500/15 to-purple-500/15 p-1.5">
@@ -412,7 +412,7 @@ interface BarChartCardProps {
 
 function BarChartCard({ title, icon: Icon, data, colorPool = CONTRACTOR_COLORS, maxBarSize = 10, className }: BarChartCardProps) {
   return (
-    <Card className={cn('overflow-hidden border-teal-100/60 bg-white shadow-sm h-full flex flex-col', className)}>
+    <Card className={cn('overflow-hidden border-teal-100/60 bg-white shadow-sm h-full flex flex-col py-0 gap-0', className)}>
       <CardHeader className="px-3 pt-2 pb-1 shrink-0">
         <div className="flex items-center gap-2">
           <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1.5">
@@ -605,7 +605,7 @@ function PhotoCarouselCard({ items, onSelect }: { items: ActivityItem[]; onSelec
   }, [index])
 
   return (
-    <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col" style={{ flex: '0 0 36%' }}>
+    <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col py-0 gap-0" style={{ flex: '0 0 36%' }}>
       <CardHeader className="p-1 pb-0 shrink-0">
         <div className="flex items-center gap-1">
           <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
@@ -1044,7 +1044,7 @@ export default function DashboardView() {
         >
           <div className="h-full flex flex-col gap-1" style={{ scrollbarGutter: 'stable' }}>
             {/* Top: Recent Activity card (70% height) */}
-            <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col" style={{ flex: '0 0 57%' }}>
+            <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col py-0 gap-0" style={{ flex: '0 0 57%' }}>
               <CardHeader className="p-1 pb-0 shrink-0">
                 <div className="flex items-center gap-1">
                   <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
