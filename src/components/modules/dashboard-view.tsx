@@ -22,6 +22,10 @@ import {
   HardHat,
   Tent,
   RotateCcw,
+  Truck,
+  Clock,
+  Camera,
+  User,
 } from 'lucide-react'
 import {
   BarChart,
@@ -169,6 +173,23 @@ function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
+function formatFullDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function formatClockTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-IN', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 // ──────────────────── Stat Card ────────────────────
 
 interface StatCardProps {
@@ -195,8 +216,10 @@ const STAT_ACCENTS: Record<string, { chip: string; icon: string }> = {
 function StatCard({ title, icon: Icon, iconBg, bigNumber, unit, subtitle, segments }: StatCardProps) {
   const total = segments.reduce((s, seg) => s + seg.value, 0)
   const accent = STAT_ACCENTS[iconBg.split('-')[1] ?? ''] ?? STAT_ACCENTS.slate
-  // 4+ segments means a third tile row — shrink the numerals so it still fits the card.
-  const valueSize = segments.length >= 4 ? 'text-sm' : 'text-base'
+  // 4+ segments means a third tile row, so each tile is shorter — step the numerals
+  // down a size there. Both sizes assume a 3-digit value plus the percentage still
+  // fit the ~68px of usable tile width.
+  const valueSize = segments.length >= 4 ? 'text-lg' : 'text-xl'
   return (
     <Card className="h-full overflow-hidden border-slate-200/70 bg-white shadow-sm py-0 gap-0">
       <CardContent className="p-1.5 h-full flex flex-col">
@@ -219,12 +242,13 @@ function StatCard({ title, icon: Icon, iconBg, bigNumber, unit, subtitle, segmen
         <div className="grid grid-cols-2 gap-1 auto-rows-fr flex-1 min-h-0">
           <div
             className={cn(
-              'rounded-lg bg-slate-50 px-1.5 py-1 min-w-0 flex flex-col justify-between',
+              'rounded-lg bg-slate-50 px-1.5 py-1 min-w-0 flex flex-col',
               segments.length % 2 === 0 && 'col-span-2',
             )}
           >
-            <p className="text-[8px] font-bold uppercase tracking-wide text-slate-500 truncate">{unit || 'Total'}</p>
-            <div className="flex items-center gap-1.5">
+            <p className="text-[10px] font-bold uppercase leading-tight text-slate-600 break-words shrink-0">{unit || 'Total'}</p>
+            {/* Value centres in whatever height is left under the label. */}
+            <div className="flex-1 min-h-0 flex items-center justify-center gap-1.5">
               <p className={cn(valueSize, 'font-extrabold tabular-nums leading-none text-slate-900 shrink-0')}>{bigNumber}</p>
               {total > 0 && (
                 <div className="flex-1 h-1.5 min-w-0 rounded-full overflow-hidden bg-slate-200/70 flex gap-px">
@@ -238,14 +262,16 @@ function StatCard({ title, icon: Icon, iconBg, bigNumber, unit, subtitle, segmen
           {segments.map((seg, i) => {
             const pct = total > 0 ? Math.round((seg.value / total) * 100) : 0
             return (
-              <div key={i} className="rounded-lg px-1.5 py-1 min-w-0 flex flex-col justify-between gap-0.5" style={{ backgroundColor: `${seg.color}14` }}>
-                <div className="flex items-baseline justify-between gap-1">
-                  <p className="text-[8px] font-bold uppercase tracking-wide truncate" style={{ color: seg.color }}>{seg.label}</p>
-                  <span className="text-[8px] font-bold tabular-nums shrink-0" style={{ color: seg.color }}>{pct}%</span>
-                </div>
-                <p className={cn(valueSize, 'font-extrabold tabular-nums leading-none text-slate-900')}>{seg.value}</p>
-                <div className="h-1 w-full rounded-full overflow-hidden bg-white/70">
-                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: seg.color }} />
+              <div key={i} className="rounded-lg px-1.5 py-1 min-w-0 flex flex-col" style={{ backgroundColor: `${seg.color}14` }}>
+                {/* Label owns the full tile width and wraps rather than truncating —
+                    at this size "Expiring Soon" / "Conditional" do not fit on one line
+                    beside the percentage, so the percentage rides with the value below. */}
+                <p className="text-[10px] font-bold uppercase leading-tight break-words shrink-0" style={{ color: seg.color }}>{seg.label}</p>
+                <div className="flex-1 min-h-0 flex items-center justify-center">
+                  <div className="flex items-baseline gap-1">
+                    <p className={cn(valueSize, 'font-extrabold tabular-nums leading-none text-slate-900')}>{seg.value}</p>
+                    <span className="text-[9px] font-bold tabular-nums shrink-0" style={{ color: seg.color }}>{pct}%</span>
+                  </div>
                 </div>
               </div>
             )
@@ -605,7 +631,7 @@ function PhotoCarouselCard({ items, onSelect }: { items: ActivityItem[]; onSelec
   }, [index])
 
   return (
-    <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col py-0 gap-0" style={{ flex: '0 0 36%' }}>
+    <Card className="h-full min-h-0 overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col py-0 gap-0">
       <CardHeader className="p-1 pb-0 shrink-0">
         <div className="flex items-center gap-1">
           <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
@@ -620,9 +646,9 @@ function PhotoCarouselCard({ items, onSelect }: { items: ActivityItem[]; onSelec
             <div className="flex items-center justify-center w-full"><p className="text-xs text-slate-400">No photos available</p></div>
           ) : (
             items.map((item) => (
-              <div key={item.id} className="snap-start flex-none w-full px-0">
-                <button onClick={() => onSelect(item)} className="w-full h-full rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-teal-300">
-                  <img src={item.photo!} alt={item.title} className="w-full h-44 object-cover rounded-md" />
+              <div key={item.id} className="snap-start flex-none w-full h-full px-0">
+                <button onClick={() => onSelect(item)} className="block w-full h-full rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-teal-300">
+                  <img src={item.photo!} alt={item.title} className="w-full h-full object-cover rounded-md" />
                 </button>
               </div>
             ))
@@ -633,7 +659,30 @@ function PhotoCarouselCard({ items, onSelect }: { items: ActivityItem[]; onSelec
   )
 }
 
+// ──────────────────── Photo Detail Row ────────────────────
+// One labelled line in the photo preview dialog. Renders "Not recorded" rather
+// than hiding the row when a value is missing, so it stays obvious which
+// details the record actually carries.
+function PhotoDetailRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
+  const missing = !value || value === '—'
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-24 shrink-0">{label}</p>
+      <p className={cn('text-xs flex-1 min-w-0 break-words', missing ? 'italic text-slate-400' : 'font-medium text-slate-700')}>
+        {missing ? 'Not recorded' : value}
+      </p>
+    </div>
+  )
+}
+
 // ──────────────────── Main Component ────────────────────
+
+// Both dashboard columns lay out on these rows so the right panel's cards line
+// up with the left column's: Recent Activity spans the two KPI rows, Photos sits
+// on the same row as Workforce per Camp. Quick Actions is a separate full-width
+// strip below the two columns, so it is not a row here.
+const DASH_GRID_ROWS = 'minmax(0, 0.67fr) minmax(0, 0.67fr) minmax(0, 0.78fr)'
 
 export default function DashboardView() {
   const setPage = useNavStore(s => s.setPage)
@@ -918,9 +967,9 @@ export default function DashboardView() {
           scrollbarGutter: 'stable',
         }}
       >
-        {/* LEFT: Dashboard area — 3 rows (KPI / Donuts / Camps) + Quick Actions */}
+        {/* LEFT: Dashboard area — 3 rows (KPI / Donuts / Camps) */}
         <div className="min-w-0 grid overflow-hidden" style={{
-          gridTemplateRows: 'minmax(0, 0.67fr) minmax(0, 0.67fr) minmax(0, 0.78fr) auto',
+          gridTemplateRows: DASH_GRID_ROWS,
           gap: '6px',
         }}>
           {/* Row 1: 5 KPI cards */}
@@ -999,39 +1048,6 @@ export default function DashboardView() {
             <RankedListCard title="Camps per Contractor" icon={Building2} items={campsPerContractorData} colorPool={['#8b5cf6', '#ec4899', '#0ea5e9', '#eab308', '#f97316', '#14b8a6', '#94a3b8']} className="border-none shadow-none" />
             <BarChartCard title="Workforce per Camp" icon={Users} data={workforcePerCampData} maxBarSize={10} />
           </motion.div>
-
-          {/* Quick Actions — 4 buttons, ~55px high */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
-            className="shrink-0"
-          >
-            <div className="grid grid-cols-4 gap-3 w-full">
-              {[
-                { icon: UserPlus, label: 'Register Worker', action: 'worker-form' as const, bg: 'bg-teal-500' },
-                { icon: FileWarning, label: 'Log Incident', action: 'incident-form' as const, bg: 'bg-rose-500' },
-                { icon: ClipboardCheck, label: 'Mark Attendance', action: 'attendance' as const, bg: 'bg-emerald-500' },
-                { icon: UserCog, label: 'View Workers', action: 'workers' as const, bg: 'bg-purple-500' },
-              ].map((action) => (
-                <Button
-                  key={action.action}
-                  variant="outline"
-                  className="h-[50px] flex-row justify-start gap-3 px-4 w-full group/qa transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 border-slate-200 bg-white rounded-full relative"
-                  onClick={() => {
-                    if (action.action === 'worker-form') openWorkerForm()
-                    else if (action.action === 'incident-form') openIncidentForm()
-                    else setPage(action.action)
-                  }}
-                >
-                  <div className={cn('rounded-full p-1.5 text-white shadow-sm shrink-0', action.bg)}>
-                    <action.icon className="h-4 w-4" />
-                  </div>
-                  <span className="text-xs font-semibold text-slate-800">{action.label}</span>
-                </Button>
-              ))}
-            </div>
-          </motion.div>
         </div>
 
         {/* RIGHT: Recent Activity panel — 372px wide, full height */}
@@ -1042,9 +1058,9 @@ export default function DashboardView() {
           className="overflow-hidden"
           style={{ scrollbarGutter: 'stable' }}
         >
-          <div className="h-full flex flex-col gap-1" style={{ scrollbarGutter: 'stable' }}>
-            {/* Top: Recent Activity card (70% height) */}
-            <Card className="overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col py-0 gap-0" style={{ flex: '0 0 57%' }}>
+          <div className="h-full grid overflow-hidden" style={{ gridTemplateRows: DASH_GRID_ROWS, gap: '6px', scrollbarGutter: 'stable' }}>
+            {/* Rows 1-2: Recent Activity — spans both KPI rows */}
+            <Card className="row-start-1 row-end-3 min-h-0 overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col py-0 gap-0">
               <CardHeader className="p-1 pb-0 shrink-0">
                 <div className="flex items-center gap-1">
                   <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
@@ -1092,30 +1108,84 @@ export default function DashboardView() {
               </CardContent>
             </Card>
 
-            {/* Bottom: Photos card (30% height) */}
-            <PhotoCarouselCard items={photoItems} onSelect={setPreviewPhoto} />
+            {/* Row 3: Photos — same row as Workforce per Camp, so the two align */}
+            <div className="row-start-3 row-end-4 min-h-0">
+              <PhotoCarouselCard items={photoItems} onSelect={setPreviewPhoto} />
+            </div>
 
           </div>
         </motion.div>
 
       </div>
 
+      {/* Quick Actions — full-width strip under both columns, so it runs from the
+          left edge of the KPI cards to the right edge of the Photos card. */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+        className="shrink-0"
+      >
+        <div className="grid grid-cols-5 gap-3 w-full">
+          {[
+            { icon: UserPlus, label: 'Register Worker', action: 'worker-form' as const, bg: 'bg-teal-500' },
+            { icon: FileWarning, label: 'Log Incident', action: 'incident-form' as const, bg: 'bg-rose-500' },
+            { icon: ClipboardCheck, label: 'Mark Attendance', action: 'attendance' as const, bg: 'bg-emerald-500' },
+            { icon: UserCog, label: 'View Workers', action: 'workers' as const, bg: 'bg-purple-500' },
+            { icon: Truck, label: 'Search Machinery', action: 'vehicles' as const, bg: 'bg-amber-500' },
+          ].map((action) => (
+            <Button
+              key={action.action}
+              variant="outline"
+              className="h-[50px] flex-row justify-start gap-3 px-4 w-full min-w-0 group/qa transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 border-slate-200 bg-white rounded-full relative"
+              onClick={() => {
+                if (action.action === 'worker-form') openWorkerForm()
+                else if (action.action === 'incident-form') openIncidentForm()
+                else setPage(action.action)
+              }}
+            >
+              <div className={cn('rounded-full p-1.5 text-white shadow-sm shrink-0', action.bg)}>
+                <action.icon className="h-4 w-4" />
+              </div>
+              <span className="text-xs font-semibold text-slate-800 truncate min-w-0">{action.label}</span>
+            </Button>
+          ))}
+        </div>
+      </motion.div>
+
       {/* Photo Preview Dialog */}
       <Dialog open={!!previewPhoto} onOpenChange={(open) => !open && setPreviewPhoto(null)}>
-        <DialogContent className="max-w-md p-0 overflow-hidden">
-          <DialogTitle className="sr-only">Photo Preview</DialogTitle>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Photo Details</DialogTitle>
           {previewPhoto?.photo && (
             <>
-              <img src={previewPhoto.photo} alt={previewPhoto.title} className="w-full max-h-[60vh] object-contain bg-slate-100" />
-              <div className="p-3 space-y-1">
-                <p className="text-sm font-semibold text-slate-800">{previewPhoto.title}</p>
-                <p className="text-xs text-slate-500">{previewPhoto.subtitle}</p>
-                {previewPhoto.location && (
-                  <p className="text-xs text-slate-400">{previewPhoto.location}</p>
-                )}
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Uploaded {formatRelativeTime(previewPhoto.timestamp)}
-                </p>
+              <img src={previewPhoto.photo} alt={previewPhoto.title} className="w-full max-h-[55vh] object-contain bg-slate-100" />
+              <div className="p-4 space-y-3 max-h-[35vh] overflow-y-auto">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{previewPhoto.title}</p>
+                  {previewPhoto.subtitle && (
+                    <p className="text-xs text-slate-500 mt-0.5">{previewPhoto.subtitle}</p>
+                  )}
+                </div>
+
+                <div className="h-px bg-slate-100" />
+
+                <div className="space-y-2">
+                  <PhotoDetailRow icon={User} label="Uploaded by" value={previewPhoto.meta?.UploadedBy} />
+                  <PhotoDetailRow icon={Camera} label="Source" value={previewPhoto.subtitle} />
+                  <PhotoDetailRow icon={MapPin} label="Location" value={previewPhoto.location} />
+                  <PhotoDetailRow icon={CalendarDays} label="Date" value={formatFullDate(previewPhoto.timestamp)} />
+                  <PhotoDetailRow
+                    icon={Clock}
+                    label="Time"
+                    value={`${formatClockTime(previewPhoto.timestamp)} (${formatRelativeTime(previewPhoto.timestamp)})`}
+                  />
+                  {Object.entries(previewPhoto.meta ?? {})
+                    .filter(([k]) => k !== 'Demo' && k !== 'UploadedBy')
+                    .map(([k, v]) => (
+                      <PhotoDetailRow key={k} icon={HardHat} label={k === 'EmpNo' ? 'Employee No' : k} value={v} />
+                    ))}
+                </div>
               </div>
             </>
           )}
