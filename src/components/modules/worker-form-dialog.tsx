@@ -75,6 +75,7 @@ const nomineeSchema = z.object({
 })
 
 const workerFormSchema = z.object({
+  profilePhotoPath: z.string().min(1, 'Profile photo is required'),
   fullName: z.string().min(1, 'Full name is required'),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   gender: z.string().min(1, 'Gender is required'),
@@ -164,7 +165,7 @@ const STEPS: StepDef[] = [
     title: 'Personal Information',
     description: 'Basic identity and demographic details',
     icon: User,
-    fields: ['fullName', 'dateOfBirth', 'gender', 'bloodGroup', 'qualification'],
+    fields: ['profilePhotoPath', 'fullName', 'dateOfBirth', 'gender', 'bloodGroup', 'qualification'],
   },
   {
     id: 1,
@@ -208,7 +209,6 @@ function WorkerFormDialogInner({ editId, onClose }: InnerProps) {
 
   const queryClient = useQueryClient()
   const [submitting, setSubmitting] = useState(false)
-  const [userPhoto, setUserPhoto] = useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // Wizard step state
@@ -244,6 +244,7 @@ function WorkerFormDialogInner({ editId, onClose }: InnerProps) {
   const form = useForm<WorkerFormValues>({
     resolver: zodResolver(workerFormSchema),
     defaultValues: {
+      profilePhotoPath: '',
       fullName: '',
       dateOfBirth: '',
       gender: '',
@@ -274,16 +275,12 @@ function WorkerFormDialogInner({ editId, onClose }: InnerProps) {
     name: 'nominees',
   })
 
-  // Derive photo: user-uploaded takes priority, else existing from DB
-  const photoDataUrl =
-    userPhoto ||
-    (isEdit && existingWorker?.data?.profilePhotoPath ? existingWorker.data.profilePhotoPath : null)
-
   // Populate form when editing
   useEffect(() => {
     if (existingWorker?.data && isEdit) {
       const w = existingWorker.data
       form.reset({
+        profilePhotoPath: w.profilePhotoPath ?? '',
         fullName: w.fullName,
         dateOfBirth: w.dateOfBirth?.slice(0, 10) ?? '',
         gender: w.gender,
@@ -325,7 +322,7 @@ function WorkerFormDialogInner({ editId, onClose }: InnerProps) {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...values, profilePhotoPath: photoDataUrl || undefined }),
+        body: JSON.stringify(values),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save worker')
@@ -551,63 +548,81 @@ function WorkerFormDialogInner({ editId, onClose }: InnerProps) {
                           <CardDescription>Basic identity and demographic details</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {/* Photo Upload */}
-                          <div className="sm:col-span-2 flex flex-col items-center gap-2 mb-2">
-                            <div
-                              className="relative w-[72px] h-[72px] rounded-full border-2 border-dashed border-muted-foreground/30 bg-muted/30 flex items-center justify-center cursor-pointer overflow-hidden group"
-                              onClick={() => fileInputRef.current?.click()}
-                            >
-                              {photoDataUrl ? (
-                                <img
-                                  src={photoDataUrl}
-                                  alt="Profile"
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex flex-col items-center gap-0.5 text-muted-foreground">
-                                  <Camera className="h-5 w-5 opacity-60" />
-                                  <span className="text-[9px]">Add Photo</span>
+                          {/* Photo Upload (required) */}
+                          <FormField
+                            control={form.control}
+                            name="profilePhotoPath"
+                            render={({ field, fieldState }) => (
+                              <FormItem className="sm:col-span-2 flex flex-col items-center gap-2 mb-2 space-y-0">
+                                <FormLabel>Profile Photo *</FormLabel>
+                                <div
+                                  className={[
+                                    'relative w-[72px] h-[72px] rounded-full border-2 border-dashed bg-muted/30 flex items-center justify-center cursor-pointer overflow-hidden group',
+                                    fieldState.error
+                                      ? 'border-destructive'
+                                      : 'border-muted-foreground/30',
+                                  ].join(' ')}
+                                  onClick={() => fileInputRef.current?.click()}
+                                >
+                                  {field.value ? (
+                                    <img
+                                      src={field.value}
+                                      alt="Profile"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div
+                                      className={[
+                                        'flex flex-col items-center gap-0.5',
+                                        fieldState.error ? 'text-destructive' : 'text-muted-foreground',
+                                      ].join(' ')}
+                                    >
+                                      <Camera className="h-5 w-5 opacity-60" />
+                                      <span className="text-[9px]">Add Photo</span>
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Camera className="h-4 w-4 text-white" />
+                                  </div>
                                 </div>
-                              )}
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <Camera className="h-4 w-4 text-white" />
-                              </div>
-                            </div>
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept="capture=image,image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (!file) return
-                                if (file.size > 5 * 1024 * 1024) {
-                                  toast.error('Photo must be less than 5MB')
-                                  return
-                                }
-                                const reader = new FileReader()
-                                reader.onload = () => {
-                                  setUserPhoto(reader.result as string)
-                                }
-                                reader.readAsDataURL(file)
-                              }}
-                            />
-                            {photoDataUrl && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="text-muted-foreground hover:text-red-500 h-7 text-xs"
-                                onClick={() => {
-                                  setUserPhoto(null)
-                                  if (fileInputRef.current) fileInputRef.current.value = ''
-                                }}
-                              >
-                                <X className="h-3.5 w-3.5 mr-1" />
-                                Remove Photo
-                              </Button>
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  accept="capture=image,image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (!file) return
+                                    if (file.size > 5 * 1024 * 1024) {
+                                      toast.error('Photo must be less than 5MB')
+                                      return
+                                    }
+                                    const reader = new FileReader()
+                                    reader.onload = () => {
+                                      field.onChange(reader.result as string)
+                                    }
+                                    reader.readAsDataURL(file)
+                                  }}
+                                />
+                                {field.value && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-muted-foreground hover:text-red-500 h-7 text-xs"
+                                    onClick={() => {
+                                      field.onChange('')
+                                      if (fileInputRef.current) fileInputRef.current.value = ''
+                                    }}
+                                  >
+                                    <X className="h-3.5 w-3.5 mr-1" />
+                                    Remove Photo
+                                  </Button>
+                                )}
+                                <FormMessage />
+                              </FormItem>
                             )}
-                          </div>
+                          />
 
                           <FormField
                             control={form.control}

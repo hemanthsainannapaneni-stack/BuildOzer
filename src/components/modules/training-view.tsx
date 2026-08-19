@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import {
   Plus,
   Search,
@@ -51,6 +51,8 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { format, parseISO, isPast, differenceInDays } from 'date-fns'
 import TrainingCertificate from '@/components/shared/training-certificate'
+import WorkerMultiSelect from '@/components/shared/worker-multi-select'
+import DateRangeFilter from '@/components/shared/date-range-filter'
 import { useSort } from '@/lib/use-sort'
 import { SortableHeader } from '@/components/shared/sortable-header'
 import { TablePagination } from '@/components/shared/table-pagination'
@@ -64,6 +66,14 @@ interface Worker {
   isActive: boolean
   designation: { name: string }
   contractor?: { name: string } | null
+  /** "Project" in the UI — workers are tagged to one site. */
+  site?: { id: string; name: string } | null
+}
+
+interface Site {
+  id: string
+  name: string
+  code: string
 }
 
 interface WorkersResponse {
@@ -90,7 +100,8 @@ interface TrainingRecord {
 }
 
 interface TrainingFormValues {
-  workerId: string
+  siteId: string
+  workerIds: string[]
   trainingType: string
   trainingTitle: string
   dateConducted: string
@@ -138,6 +149,15 @@ function generateCertificateNumber(records: TrainingRecord[], currentIndex: numb
     if (records[i].dateConducted === currentDate) seq++
   }
   return `TRN-${dateStr}-${String(seq).padStart(4, '0')}`
+}
+
+/** Local calendar day (yyyy-MM-dd) of a stored timestamp — what the table shows. */
+function localDay(dateStr: string): string {
+  try {
+    return format(parseISO(dateStr), 'yyyy-MM-dd')
+  } catch {
+    return ''
+  }
 }
 
 function statusBadgeClass(status: string): string {
@@ -194,6 +214,69 @@ function TableSkeleton() {
   )
 }
 
+// Radix Select forbids an empty item value, so "no project filter" needs a sentinel.
+const ALL_PROJECTS = '__all_projects__'
+
+interface SummaryStats {
+  total: number
+  valid: number
+  expiring: number
+  expired: number
+}
+
+/** The four summary tiles, which double as the status filter ('' = everything). */
+const SUMMARY_CARDS: {
+  label: string
+  status: string
+  icon: typeof GraduationCap
+  value: (s: SummaryStats) => number
+  cardClass: string
+  iconClass: string
+  valueClass: string
+  ringClass: string
+}[] = [
+  {
+    label: 'Total Trainings',
+    status: '',
+    icon: GraduationCap,
+    value: (s) => s.total,
+    cardClass: 'bg-teal-50 text-teal-700 border-teal-200',
+    iconClass: 'bg-teal-100 text-teal-600',
+    valueClass: '',
+    ringClass: 'outline-teal-600',
+  },
+  {
+    label: 'Valid',
+    status: 'Valid',
+    icon: CheckCircle2,
+    value: (s) => s.valid,
+    cardClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    iconClass: 'bg-emerald-100 text-emerald-600',
+    valueClass: 'text-emerald-700',
+    ringClass: 'outline-emerald-600',
+  },
+  {
+    label: 'Expiring Soon',
+    status: 'ExpiringSoon',
+    icon: AlertTriangle,
+    value: (s) => s.expiring,
+    cardClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    iconClass: 'bg-amber-100 text-amber-600',
+    valueClass: 'text-amber-700',
+    ringClass: 'outline-amber-600',
+  },
+  {
+    label: 'Expired',
+    status: 'Expired',
+    icon: XCircle,
+    value: (s) => s.expired,
+    cardClass: 'bg-rose-50 text-rose-700 border-rose-200',
+    iconClass: 'bg-rose-100 text-rose-600',
+    valueClass: 'text-rose-700',
+    ringClass: 'outline-rose-600',
+  },
+]
+
 // ---------- add training dialog ----------
 function AddTrainingDialog({ open, onOpenChange }: {
   open: boolean
@@ -201,9 +284,10 @@ function AddTrainingDialog({ open, onOpenChange }: {
 }) {
   const queryClient = useQueryClient()
 
-  const { register, handleSubmit, control, reset, setValue, formState: { errors } } = useForm<TrainingFormValues>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<TrainingFormValues>({
     defaultValues: {
-      workerId: '',
+      siteId: '',
+      workerIds: [],
       trainingType: 'SafetyInduction',
       trainingTitle: '',
       dateConducted: format(new Date(), 'yyyy-MM-dd'),
@@ -218,11 +302,34 @@ function AddTrainingDialog({ open, onOpenChange }: {
     },
   })
 
-  const { data: workersResp } = useQuery<WorkersResponse>({
-    queryKey: ['workers-select'],
-    queryFn: () => fetch('/api/workers?limit=100').then((r) => r.json()),
+  const selectedWorkerIds = useWatch({ control, name: 'workerIds' }) ?? []
+  const selectedSiteId = useWatch({ control, name: 'siteId' }) ?? ''
+
+  const { data: sites = [] } = useQuery<Site[]>({
+    queryKey: ['sites'],
+    queryFn: () => fetch('/api/sites').then((r) => r.json()),
+    enabled: open,
   })
-  const workers = workersResp?.data ?? []
+
+  // The workers endpoint caps `limit` at 100, so page through it — otherwise
+  // "Select all" would silently only ever cover the first 100 workers.
+  const { data: workers = [], isLoading: workersLoading } = useQuery<Worker[]>({
+    queryKey: ['workers-select-all'],
+    queryFn: async () => {
+      const all: Worker[] = []
+      let page = 1
+      for (;;) {
+        const resp: WorkersResponse = await fetch(
+          `/api/workers?limit=100&page=${page}`,
+        ).then((r) => r.json())
+        all.push(...(resp.data ?? []))
+        if (all.length >= (resp.total ?? 0) || !resp.data?.length) break
+        page++
+      }
+      return all
+    },
+    enabled: open,
+  })
 
   const mutation = useMutation({
     mutationFn: async (data: TrainingFormValues) => {
@@ -234,30 +341,59 @@ function AddTrainingDialog({ open, onOpenChange }: {
             : 'Valid'
         : 'Valid'
 
-      return fetch(`/api/workers/${data.workerId}/training`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          trainingType: data.trainingType,
-          trainingTitle: data.trainingTitle,
-          dateConducted: data.dateConducted,
-          durationHours: parseFloat(data.durationHours) || 0,
-          trainerName: data.trainerName || null,
-          trainerCredentials: data.trainerCredentials || null,
-          trainingAgency: data.trainingAgency || null,
-          certificateNumber: data.certificateNumber || null,
-          validityDate: data.validityDate || null,
-          status,
-          isCompleted: data.isCompleted,
-          remarks: data.remarks || null,
+      const payload = {
+        trainingType: data.trainingType,
+        trainingTitle: data.trainingTitle,
+        dateConducted: data.dateConducted,
+        durationHours: parseFloat(data.durationHours) || 0,
+        trainerName: data.trainerName || null,
+        trainerCredentials: data.trainerCredentials || null,
+        trainingAgency: data.trainingAgency || null,
+        certificateNumber: data.certificateNumber || null,
+        validityDate: data.validityDate || null,
+        status,
+        isCompleted: data.isCompleted,
+        remarks: data.remarks || null,
+      }
+
+      // One record per selected worker. Settled rather than all-or-nothing so a
+      // single bad worker doesn't discard the rest of a 50-worker batch.
+      const results = await Promise.allSettled(
+        data.workerIds.map(async (workerId) => {
+          const res = await fetch(`/api/workers/${workerId}/training`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}))
+            throw new Error(body.error || 'Failed to add training record')
+          }
+          return res.json()
         }),
-      }).then((r) => r.json())
+      )
+
+      const failed = results.filter((r) => r.status === 'rejected').length
+      return { total: data.workerIds.length, failed }
     },
-    onSuccess: () => {
-      toast.success('Training record added successfully')
+    onSuccess: ({ total, failed }) => {
+      const saved = total - failed
+      if (failed === 0) {
+        toast.success(
+          saved === 1
+            ? 'Training record added successfully'
+            : `Training record added for ${saved} workers`,
+        )
+      } else if (saved === 0) {
+        toast.error(`Failed to add training for all ${total} workers`)
+      } else {
+        toast.warning(`Added for ${saved} of ${total} workers — ${failed} failed`)
+      }
       queryClient.invalidateQueries({ queryKey: ['training-all'] })
-      reset()
-      onOpenChange(false)
+      if (saved > 0) {
+        reset()
+        onOpenChange(false)
+      }
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to add training record')
@@ -265,6 +401,22 @@ function AddTrainingDialog({ open, onOpenChange }: {
   })
 
   const onSubmit = (data: TrainingFormValues) => mutation.mutate(data)
+
+  const selectedCount = selectedWorkerIds.length
+
+  const workerCountBySite = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const w of workers) {
+      if (w.site?.id) counts[w.site.id] = (counts[w.site.id] ?? 0) + 1
+    }
+    return counts
+  }, [workers])
+
+  // The project is an optional filter — with none picked, every worker is offered.
+  const projectWorkers = useMemo(
+    () => (selectedSiteId ? workers.filter((w) => w.site?.id === selectedSiteId) : workers),
+    [workers, selectedSiteId],
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -276,31 +428,87 @@ function AddTrainingDialog({ open, onOpenChange }: {
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {/* Worker Select */}
+          {/* Optional — narrows the worker list below to one project */}
           <div>
-            <Label>Worker *</Label>
+            <div className="flex items-baseline justify-between gap-2">
+              <Label>Project</Label>
+              <span className="text-xs text-muted-foreground">
+                Optional — narrows the worker list
+              </span>
+            </div>
             <Controller
               control={control}
-              name="workerId"
-              rules={{ required: true }}
+              name="siteId"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select worker..." />
+                <Select
+                  value={field.value || ALL_PROJECTS}
+                  onValueChange={(v) => field.onChange(v === ALL_PROJECTS ? '' : v)}
+                >
+                  <SelectTrigger className="mt-1 w-full">
+                    {/* Explicit children so the trigger shows the name only —
+                        otherwise Radix echoes the item's count badge too. */}
+                    <SelectValue placeholder="All projects">
+                      {sites.find((s) => s.id === field.value)?.name ?? 'All projects'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
-                    {workers
-                      .sort((a, b) => a.fullName.localeCompare(b.fullName))
-                      .map((w) => (
-                        <SelectItem key={w.id} value={w.id}>
-                          {w.fullName} ({w.employeeNumber})
-                        </SelectItem>
-                      ))}
+                    <SelectItem value={ALL_PROJECTS}>
+                      <span className="flex w-full items-center justify-between gap-6">
+                        <span>All projects</span>
+                        {!workersLoading && (
+                          <span className="text-muted-foreground text-xs">
+                            {workers.length} workers
+                          </span>
+                        )}
+                      </span>
+                    </SelectItem>
+                    {sites.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        <span className="flex w-full items-center justify-between gap-6">
+                          <span>{s.name}</span>
+                          {/* Counts come from the worker list; suppress them
+                              until it lands so projects don't read as empty. */}
+                          {!workersLoading && (
+                            <span className="text-muted-foreground text-xs">
+                              {workerCountBySite[s.id] ?? 0} workers
+                            </span>
+                          )}
+                        </span>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}
             />
-            {errors.workerId && <p className="text-xs text-destructive mt-1">Required</p>}
+          </div>
+
+          {/* Worker Select — multiple workers get one identical record each */}
+          <div>
+            <div className="flex items-baseline justify-between gap-2">
+              <Label>Workers *</Label>
+              <span className="text-xs text-muted-foreground">
+                {selectedSiteId
+                  ? `${projectWorkers.length} in this project — select all or pick individually`
+                  : `${projectWorkers.length} across all projects`}
+              </span>
+            </div>
+            <Controller
+              control={control}
+              name="workerIds"
+              rules={{ validate: (v) => v.length > 0 }}
+              render={({ field }) => (
+                <WorkerMultiSelect
+                  className="mt-1"
+                  workers={projectWorkers}
+                  value={field.value}
+                  onChange={field.onChange}
+                  loading={workersLoading}
+                />
+              )}
+            />
+            {errors.workerIds && (
+              <p className="text-xs text-destructive mt-1">Select at least one worker</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -358,6 +566,11 @@ function AddTrainingDialog({ open, onOpenChange }: {
             <div>
               <Label>Certificate Number</Label>
               <Input placeholder="Certificate #" {...register('certificateNumber')} className="mt-1" />
+              {selectedCount > 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Applied to all {selectedCount} workers — leave blank to auto-number each.
+                </p>
+              )}
             </div>
             <div>
               <Label>Validity Date</Label>
@@ -391,7 +604,11 @@ function AddTrainingDialog({ open, onOpenChange }: {
               className="bg-[#0d9488] hover:bg-[#0f766e] text-white"
               disabled={mutation.isPending}
             >
-              {mutation.isPending ? 'Saving...' : 'Add Training'}
+              {mutation.isPending
+                ? `Saving${selectedCount > 1 ? ` ${selectedCount} records` : ''}...`
+                : selectedCount > 1
+                  ? `Add Training for ${selectedCount} Workers`
+                  : 'Add Training'}
             </Button>
           </div>
         </form>
@@ -457,6 +674,9 @@ export default function TrainingView() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  // Opens on "Overall" (no date bound); pick a preset or days to narrow it.
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 15
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -467,12 +687,20 @@ export default function TrainingView() {
     return () => clearTimeout(t)
   }, [search])
 
-  const hasActiveFilter = !!(search || typeFilter || statusFilter)
+  const hasActiveFilter = !!(search || typeFilter || statusFilter || dateFrom || dateTo)
   const clearFilters = () => {
     setSearch('')
     setDebouncedSearch('')
     setTypeFilter('')
     setStatusFilter('')
+    setDateFrom('')
+    setDateTo('')
+    setPage(1)
+  }
+
+  /** The summary cards double as the status filter; '' is "Total Trainings". */
+  const selectStatus = (status: string) => {
+    setStatusFilter((prev) => (prev === status ? '' : status))
     setPage(1)
   }
 
@@ -524,8 +752,9 @@ export default function TrainingView() {
     return map
   }, [allRecords])
 
-  // Filter
-  const filteredRecords = useMemo(() => {
+  // Everything except the status filter — the summary cards are the status
+  // dimension, so their counts describe this set rather than the whole table.
+  const recordsBeforeStatus = useMemo(() => {
     return allRecords.filter((r) => {
       if (debouncedSearch) {
         const q = debouncedSearch.toLowerCase()
@@ -534,28 +763,52 @@ export default function TrainingView() {
         if (!matchesWorker && !matchesTitle) return false
       }
       if (typeFilter && r.trainingType !== typeFilter) return false
-      if (statusFilter && r.status !== statusFilter) return false
+      if (dateFrom || dateTo) {
+        // dateConducted is a UTC timestamp but the table renders it in local
+        // time, so the range must compare the same local date the user sees —
+        // slicing the raw ISO string would put a 01 Apr record under 31 Mar.
+        const day = localDay(r.dateConducted)
+        if (!day) return false
+        if (dateFrom && day < dateFrom) return false
+        if (dateTo && day > dateTo) return false
+      }
       return true
     })
-  }, [allRecords, debouncedSearch, typeFilter, statusFilter])
+  }, [allRecords, debouncedSearch, typeFilter, dateFrom, dateTo])
 
-  const flatTrainingRecords = filteredRecords.map(r => ({
-    ...r,
-    'worker.fullName': r.worker?.fullName ?? '',
-  })) as (TrainingRecord & Record<string, unknown>)[]
+  const filteredRecords = useMemo(
+    () =>
+      statusFilter
+        ? recordsBeforeStatus.filter((r) => r.status === statusFilter)
+        : recordsBeforeStatus,
+    [recordsBeforeStatus, statusFilter],
+  )
+
+  // Most recently conducted first until the user picks a column to sort by.
+  const flatTrainingRecords = useMemo(
+    () =>
+      [...filteredRecords]
+        .sort((a, b) => b.dateConducted.localeCompare(a.dateConducted))
+        .map((r) => ({
+          ...r,
+          'worker.fullName': r.worker?.fullName ?? '',
+        })) as (TrainingRecord & Record<string, unknown>)[],
+    [filteredRecords],
+  )
   const { sorted, sortKey, sortDir, toggleSort } = useSort(flatTrainingRecords)
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const pagedRecords = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  // Summary stats
+  // Summary stats — reflect the search/type/date filters so the tiles always
+  // add up to what the table is showing.
   const summary = useMemo(() => {
-    const total = allRecords.length
-    const valid = allRecords.filter((r) => r.status === 'Valid').length
-    const expiring = allRecords.filter((r) => r.status === 'ExpiringSoon').length
-    const expired = allRecords.filter((r) => r.status === 'Expired').length
+    const total = recordsBeforeStatus.length
+    const valid = recordsBeforeStatus.filter((r) => r.status === 'Valid').length
+    const expiring = recordsBeforeStatus.filter((r) => r.status === 'ExpiringSoon').length
+    const expired = recordsBeforeStatus.filter((r) => r.status === 'Expired').length
     return { total, valid, expiring, expired }
-  }, [allRecords])
+  }, [recordsBeforeStatus])
 
   const isLoading = workersLoading || trainingLoading
 
@@ -594,51 +847,56 @@ export default function TrainingView() {
         <SummarySkeleton />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-          <Card className="bg-teal-50 text-teal-700 border-teal-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3 flex items-center gap-2">
-              <div className="rounded-xl p-2 shrink-0 bg-teal-100 text-teal-600 flex items-center justify-center">
-                <GraduationCap className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xl font-bold tracking-tight">{summary.total}</p>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Total Trainings</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-emerald-50 text-emerald-700 border-emerald-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3 flex items-center gap-2">
-              <div className="rounded-xl p-2 shrink-0 bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xl font-bold tracking-tight text-emerald-700">{summary.valid}</p>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Valid</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-amber-50 text-amber-700 border-amber-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3 flex items-center gap-2">
-              <div className="rounded-xl p-2 shrink-0 bg-amber-100 text-amber-600 flex items-center justify-center">
-                <AlertTriangle className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xl font-bold tracking-tight text-amber-700">{summary.expiring}</p>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Expiring Soon</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-rose-50 text-rose-700 border-rose-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3 flex items-center gap-2">
-              <div className="rounded-xl p-2 shrink-0 bg-rose-100 text-rose-600 flex items-center justify-center">
-                <XCircle className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xl font-bold tracking-tight text-rose-700">{summary.expired}</p>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Expired</p>
-              </div>
-            </CardContent>
-          </Card>
+          {SUMMARY_CARDS.map((card) => {
+            const Icon = card.icon
+            const isActive = statusFilter === card.status
+            return (
+              <button
+                key={card.label}
+                type="button"
+                onClick={() => selectStatus(card.status)}
+                aria-pressed={isActive}
+                title={`Show ${card.label.toLowerCase()}`}
+                className="text-left rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0d9488]"
+              >
+                <Card
+                  className={cn(
+                    card.cardClass,
+                    'cursor-pointer transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]',
+                    // Drawn inside the card — an outward ring/offset is clipped
+                    // by the page's overflow-hidden and crowds the sidebar.
+                    isActive && `outline-2 -outline-offset-2 shadow-lg ${card.ringClass}`,
+                  )}
+                >
+                  <CardContent className="p-3 flex items-center gap-2">
+                    <div className={cn('rounded-xl p-2 shrink-0 flex items-center justify-center', card.iconClass)}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={cn('text-xl font-bold tracking-tight', card.valueClass)}>
+                        {card.value(summary)}
+                      </p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 truncate">
+                        {card.label}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            )
+          })}
         </div>
+      )}
+
+      {/* Active-card context line */}
+      {!isLoading && (
+        <p className="text-xs text-muted-foreground shrink-0 -mt-1">
+          Showing{' '}
+          <span className="font-medium text-foreground">
+            {SUMMARY_CARDS.find((c) => c.status === statusFilter)?.label ?? 'Total Trainings'}
+          </span>{' '}
+          — {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''}, most recent first
+        </p>
       )}
 
       {/* Filter Bar */}
@@ -678,6 +936,13 @@ export default function TrainingView() {
                 <SelectItem value="Expired">Expired</SelectItem>
               </SelectContent>
             </Select>
+            {/* Date conducted — one calendar, presets plus a custom range */}
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onChange={(f, t) => { setDateFrom(f); setDateTo(t); setPage(1) }}
+              className="w-full sm:w-56"
+            />
             {hasActiveFilter && (
               <Button
                 variant="outline"

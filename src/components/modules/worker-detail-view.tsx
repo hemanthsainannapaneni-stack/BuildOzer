@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   ArrowLeft,
   Pencil,
@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import WorkerIdCard from './worker-id-card'
+import WorkerIdCard, { printWorkerIdCard } from './worker-id-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -213,6 +213,7 @@ export default function WorkerDetailView() {
   })
 
   const [idCardOpen, setIdCardOpen] = useState(false)
+  const idCardRef = useRef<HTMLDivElement>(null)
 
   // Attendance for last 7 days
   const today = new Date()
@@ -737,11 +738,11 @@ export default function WorkerDetailView() {
           <DialogHeader>
             <DialogTitle>Worker ID Card</DialogTitle>
           </DialogHeader>
-          <WorkerIdCard worker={w} />
-          <div className="flex justify-end gap-2 pt-2">
+          <WorkerIdCard worker={w} ref={idCardRef} />
+          <div className="flex justify-end gap-2 pt-2 no-print">
             <Button
               variant="outline"
-              onClick={() => window.print()}
+              onClick={() => printWorkerIdCard(idCardRef.current)}
             >
               Print Card
             </Button>

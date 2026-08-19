@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 
 // GET /api/workers/[id]
@@ -70,6 +71,11 @@ export async function PUT(
       }
     }
 
+    // The profile photo is mandatory — allow replacing it, never clearing it
+    if ('profilePhotoPath' in body && !body.profilePhotoPath) {
+      return NextResponse.json({ error: 'Profile photo is required', field: 'profilePhotoPath' }, { status: 400 })
+    }
+
     const allowedFields = [
       'fullName', 'dateOfBirth', 'age', 'gender', 'aadhaarNumber', 'aadhaarScanPath',
       'permanentAddress', 'currentAddress', 'bloodGroup', 'qualification',
@@ -86,18 +92,66 @@ export async function PUT(
       }
     }
 
-    const worker = await db.worker.update({
-      where: { id },
-      data: updateData,
-      include: {
-        designation: true,
-        contractor: true,
-        site: true,
-        labourCamp: { select: { id: true, name: true } },
-        emergencyContacts: true,
-        nominees: true,
-      },
-    })
+    // Emergency contacts and nominees are edited as whole lists in the form, so
+    // replace them wholesale when the payload carries them.
+    const emergencyContacts = Array.isArray(body.emergencyContacts) ? body.emergencyContacts : null
+    const nominees = Array.isArray(body.nominees) ? body.nominees : null
+
+    // Batched (array) transaction rather than an interactive one — the database is
+    // remote, and sequential awaits inside $transaction blow the 5s interactive timeout.
+    const ops: Prisma.PrismaPromise<unknown>[] = []
+
+    if (emergencyContacts) {
+      ops.push(db.emergencyContact.deleteMany({ where: { workerId: id } }))
+      if (emergencyContacts.length > 0) {
+        ops.push(
+          db.emergencyContact.createMany({
+            data: emergencyContacts.map((ec: { name: string; relationship: string; phone: string; isPrimary?: boolean }) => ({
+              workerId: id,
+              name: ec.name,
+              relationship: ec.relationship,
+              phone: ec.phone,
+              isPrimary: ec.isPrimary || false,
+            })),
+          }),
+        )
+      }
+    }
+
+    if (nominees) {
+      ops.push(db.nominee.deleteMany({ where: { workerId: id } }))
+      if (nominees.length > 0) {
+        ops.push(
+          db.nominee.createMany({
+            data: nominees.map((n: { name: string; relationship: string; idNumber?: string; contactNumber?: string }) => ({
+              workerId: id,
+              name: n.name,
+              relationship: n.relationship,
+              idNumber: n.idNumber || null,
+              contactNumber: n.contactNumber || null,
+            })),
+          }),
+        )
+      }
+    }
+
+    ops.push(
+      db.worker.update({
+        where: { id },
+        data: updateData,
+        include: {
+          designation: true,
+          contractor: true,
+          site: true,
+          labourCamp: { select: { id: true, name: true } },
+          emergencyContacts: true,
+          nominees: true,
+        },
+      }),
+    )
+
+    const results = await db.$transaction(ops)
+    const worker = results[results.length - 1]
 
     return NextResponse.json({ data: worker })
   } catch (error) {

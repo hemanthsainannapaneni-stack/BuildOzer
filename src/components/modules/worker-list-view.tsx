@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, UserPlus, ChevronLeft, ChevronRight, Users, FileSpreadsheet, Eye, X, Printer, UserX, UserCheck, Loader2 } from 'lucide-react'
+import { Search, UserPlus, ChevronLeft, ChevronRight, Users, FileSpreadsheet, Eye, X, Printer, UserX, UserCheck, Loader2, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import BulkImportDialog from './bulk-import-dialog'
 import { Card, CardContent } from '@/components/ui/card'
@@ -38,7 +38,7 @@ import { useAuthStore, rolePermissions } from '@/lib/auth-store'
 import { useSort } from '@/lib/use-sort'
 import { SortableHeader } from '@/components/shared/sortable-header'
 import { TableExportButton, type ExportColumn } from '@/components/ui/table-export-button'
-import WorkerIdCard from './worker-id-card'
+import WorkerIdCard, { printWorkerIdCard } from './worker-id-card'
 
 // ---------- types ----------
 interface WorkerCardData {
@@ -147,6 +147,7 @@ export default function WorkerListView() {
   const [importOpen, setImportOpen] = useState(false)
   const [idCardOpen, setIdCardOpen] = useState(false)
   const [idCardWorker, setIdCardWorker] = useState<WorkerCardData | null>(null)
+  const idCardRef = useRef<HTMLDivElement>(null)
   const [idCardLoading, setIdCardLoading] = useState(false)
   const limit = 20
   const queryClient = useQueryClient()
@@ -216,7 +217,7 @@ export default function WorkerListView() {
     }
   }
 
-  const handlePrintIdCard = () => window.print()
+  const handlePrintIdCard = () => printWorkerIdCard(idCardRef.current)
 
   const handleCloseIdCard = () => {
     setIdCardOpen(false)
@@ -492,16 +493,27 @@ export default function WorkerListView() {
                         </TableCell>
                         {(role === 'ADMIN' || role === 'HR_COORDINATOR') && (
                           <TableCell>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className={`h-7 w-7 ${w.isActive ? 'text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200' : 'text-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 border-emerald-200'}`}
-                              title={w.isActive ? 'Mark Inactive' : 'Mark Active'}
-                              disabled={togglingId === w.id}
-                              onClick={(e) => handleToggleActive(w.id, w.isActive, w.fullName, e)}
-                            >
-                              {togglingId === w.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : w.isActive ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
-                            </Button>
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 text-[#0d9488] border-[#0d9488]/30 hover:bg-[#0d9488]/10 hover:text-[#0f766e]"
+                                title="Edit Worker"
+                                onClick={(e) => { e.stopPropagation(); openWorkerForm(w.id) }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className={`h-7 w-7 ${w.isActive ? 'text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200' : 'text-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 border-emerald-200'}`}
+                                title={w.isActive ? 'Mark Inactive' : 'Mark Active'}
+                                disabled={togglingId === w.id}
+                                onClick={(e) => handleToggleActive(w.id, w.isActive, w.fullName, e)}
+                              >
+                                {togglingId === w.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : w.isActive ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
+                              </Button>
+                            </div>
                           </TableCell>
                         )}
                         <TableCell>
@@ -543,16 +555,27 @@ export default function WorkerListView() {
                             View
                           </Button>
                           {(role === 'ADMIN' || role === 'HR_COORDINATOR') && (
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className={`h-6 w-6 shrink-0 ${w.isActive ? 'text-red-500 hover:bg-red-50 border-red-200' : 'text-emerald-500 hover:bg-emerald-50 border-emerald-200'}`}
-                              title={w.isActive ? 'Mark Inactive' : 'Mark Active'}
-                              disabled={togglingId === w.id}
-                              onClick={(e) => handleToggleActive(w.id, w.isActive, w.fullName, e)}
-                            >
-                              {togglingId === w.id ? <Loader2 className="h-3 w-3 animate-spin" /> : w.isActive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-6 w-6 shrink-0 text-[#0d9488] border-[#0d9488]/30 hover:bg-[#0d9488]/10"
+                                title="Edit Worker"
+                                onClick={(e) => { e.stopPropagation(); openWorkerForm(w.id) }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className={`h-6 w-6 shrink-0 ${w.isActive ? 'text-red-500 hover:bg-red-50 border-red-200' : 'text-emerald-500 hover:bg-emerald-50 border-emerald-200'}`}
+                                title={w.isActive ? 'Mark Inactive' : 'Mark Active'}
+                                disabled={togglingId === w.id}
+                                onClick={(e) => handleToggleActive(w.id, w.isActive, w.fullName, e)}
+                              >
+                                {togglingId === w.id ? <Loader2 className="h-3 w-3 animate-spin" /> : w.isActive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+                              </Button>
+                            </>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground font-mono mt-0.5">
@@ -641,7 +664,7 @@ export default function WorkerListView() {
               <Skeleton className="h-64 w-full max-w-xs rounded-xl" />
             </div>
           ) : idCardWorker ? (
-            <WorkerIdCard worker={idCardWorker} />
+            <WorkerIdCard worker={idCardWorker} ref={idCardRef} />
           ) : (
             <p className="text-sm text-muted-foreground text-center py-8">Failed to load worker data.</p>
           )}

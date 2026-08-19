@@ -92,6 +92,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Profile photo is mandatory when registering through the form
+    if (!profilePhotoPath) {
+      return NextResponse.json({ error: 'Profile photo is required', field: 'profilePhotoPath' }, { status: 400 })
+    }
+
     // Validate age 18-55
     const dob = new Date(dateOfBirth)
     const age = calculateAge(dob)

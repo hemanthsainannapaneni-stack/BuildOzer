@@ -57,8 +57,117 @@ function maskAadhaar(aadhaar: string): string {
 const primaryContact = (worker: WorkerCardData) =>
   worker.emergencyContacts.find((ec) => ec.isPrimary) || worker.emergencyContacts[0]
 
+// ---------- printing ----------
+/** Card box in CSS px — the printed page is sized to match exactly. */
+export const CARD_WIDTH = 340
+export const CARD_HEIGHT = 540
+
+/**
+ * Prints just the ID card, on a page cut to the card's own size.
+ *
+ * The card is rendered into an offscreen iframe rather than printed from the
+ * page: printing the live document drags along the dialog it sits in, and the
+ * card ends up floating in the middle of an A4 sheet. Every style on the card
+ * is inline, so cloning its markup reproduces it exactly with no stylesheet.
+ */
+export function printWorkerIdCard(node: HTMLElement | null) {
+  if (!node) return
+
+  const title = node.dataset.printTitle || 'Worker ID Card'
+
+  const iframe = document.createElement('iframe')
+  iframe.setAttribute('aria-hidden', 'true')
+  Object.assign(iframe.style, {
+    position: 'fixed',
+    right: '0',
+    bottom: '0',
+    width: '0',
+    height: '0',
+    border: '0',
+    visibility: 'hidden',
+  })
+  document.body.appendChild(iframe)
+
+  const cleanup = () => {
+    if (iframe.parentNode) iframe.parentNode.removeChild(iframe)
+  }
+
+  const doc = iframe.contentDocument
+  if (!doc) {
+    cleanup()
+    return
+  }
+
+  // `margin: 0` on a page cut to the card is also what makes browsers drop the
+  // default header/footer (date, page title, URL, page number).
+  const css = `
+    @page { size: ${CARD_WIDTH}px ${CARD_HEIGHT}px; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: ${CARD_WIDTH}px;
+      height: ${CARD_HEIGHT}px;
+      overflow: hidden;
+      background: #ffffff;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    /* Keep the gradient strip, photo border and footer tint in the output. */
+    body * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* The shadow is screen affordance, not part of the card. */
+    .id-card-container {
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      width: ${CARD_WIDTH}px !important;
+      height: ${CARD_HEIGHT}px !important;
+    }
+  `
+
+  doc.open()
+  doc.write(
+    `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>` +
+      `<style>${css}</style></head><body>${node.outerHTML}</body></html>`,
+  )
+  doc.close()
+
+  const run = async () => {
+    const win = iframe.contentWindow
+    if (!win) {
+      cleanup()
+      return
+    }
+    // The profile photo is a data: URI but still needs a tick to decode.
+    await Promise.all(
+      Array.from(doc.images).map((img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise((resolve) => {
+              img.onload = () => resolve(null)
+              img.onerror = () => resolve(null)
+            }),
+      ),
+    )
+    win.focus()
+    win.print()
+    // Chrome's print dialog is modal on the iframe; tear down once it returns.
+    setTimeout(cleanup, 1000)
+  }
+
+  if (doc.readyState === 'complete') run()
+  else iframe.onload = run
+}
+
 // ---------- component ----------
-export default function WorkerIdCard({ worker }: { worker: WorkerCardData }) {
+export default function WorkerIdCard({
+  worker,
+  ref,
+}: {
+  worker: WorkerCardData
+  /** Points at the card box itself — pass to `printWorkerIdCard` to print it. */
+  ref?: React.Ref<HTMLDivElement>
+}) {
   const ec = primaryContact(worker)
   const initials = getInitials(worker.fullName)
 
@@ -70,40 +179,14 @@ export default function WorkerIdCard({ worker }: { worker: WorkerCardData }) {
   })
 
   return (
-    <>
-      {/* Print-specific CSS */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          .id-card-print-area,
-          .id-card-print-area * {
-            visibility: visible !important;
-          }
-          .id-card-print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            display: flex !important;
-            justify-content: center !important;
-          }
-          .id-card-container {
-            box-shadow: none !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      ` }} />
-
-      <div className="id-card-print-area flex justify-center">
+    <div className="id-card-print-area flex justify-center">
         <div
+          ref={ref}
           className="id-card-container"
+          data-print-title={`${worker.employeeNumber} - ${worker.fullName}`}
           style={{
-            width: '340px',
-            height: '540px',
+            width: `${CARD_WIDTH}px`,
+            height: `${CARD_HEIGHT}px`,
             backgroundColor: '#ffffff',
             borderRadius: '12px',
             overflow: 'hidden',
@@ -259,7 +342,6 @@ export default function WorkerIdCard({ worker }: { worker: WorkerCardData }) {
             </div>
           </div>
         </div>
-      </div>
-    </>
+    </div>
   )
 }
