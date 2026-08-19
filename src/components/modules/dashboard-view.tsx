@@ -45,6 +45,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useNavStore } from '@/stores/nav-store'
+import { useCompactUi } from '@/hooks/use-compact-layout'
 import { cn } from '@/lib/utils'
 
 // ──────────────────── Types ────────────────────
@@ -246,7 +247,7 @@ function StatCard({ title, icon: Icon, iconBg, bigNumber, unit, subtitle, segmen
               segments.length % 2 === 0 && 'col-span-2',
             )}
           >
-            <p className="text-[10px] font-bold uppercase leading-tight text-slate-600 break-words shrink-0">{unit || 'Total'}</p>
+            <p className="stat-tile-label text-[10px] font-bold uppercase leading-tight text-slate-600 break-words shrink-0">{unit || 'Total'}</p>
             {/* Value centres in whatever height is left under the label. */}
             <div className="flex-1 min-h-0 flex items-center justify-center gap-1.5">
               <p className={cn(valueSize, 'font-extrabold tabular-nums leading-none text-slate-900 shrink-0')}>{bigNumber}</p>
@@ -266,7 +267,7 @@ function StatCard({ title, icon: Icon, iconBg, bigNumber, unit, subtitle, segmen
                 {/* Label owns the full tile width and wraps rather than truncating —
                     at this size "Expiring Soon" / "Conditional" do not fit on one line
                     beside the percentage, so the percentage rides with the value below. */}
-                <p className="text-[10px] font-bold uppercase leading-tight break-words shrink-0" style={{ color: seg.color }}>{seg.label}</p>
+                <p className="stat-tile-label text-[10px] font-bold uppercase leading-tight break-words shrink-0" style={{ color: seg.color }}>{seg.label}</p>
                 <div className="flex-1 min-h-0 flex items-center justify-center">
                   <div className="flex items-baseline gap-1">
                     <p className={cn(valueSize, 'font-extrabold tabular-nums leading-none text-slate-900')}>{seg.value}</p>
@@ -437,6 +438,9 @@ interface BarChartCardProps {
 }
 
 function BarChartCard({ title, icon: Icon, data, colorPool = CONTRACTOR_COLORS, maxBarSize = 10, className }: BarChartCardProps) {
+  // Angled labels reach left of the plot and get cut off by the SVG edge in the
+  // narrow phone card, so turn them upright there.
+  const compact = useCompactUi()
   return (
     <Card className={cn('overflow-hidden border-teal-100/60 bg-white shadow-sm h-full flex flex-col py-0 gap-0', className)}>
       <CardHeader className="px-3 pt-2 pb-1 shrink-0">
@@ -449,44 +453,48 @@ function BarChartCard({ title, icon: Icon, data, colorPool = CONTRACTOR_COLORS, 
         </div>
       </CardHeader>
       <CardContent className="px-3 pt-1 pb-2 flex-1 min-h-0">
-        <div className="h-full max-h-[190px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 9, fill: '#64748b' }}
-                axisLine={false}
-                tickLine={false}
-                interval={0}
-                angle={-35}
-                textAnchor="end"
-                height={50}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 10, fill: '#64748b' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                cursor={{ fill: '#f1f5f9', opacity: 0.5 }}
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null
-                  return (
-                    <div className="rounded-md border bg-white px-2 py-1 text-xs shadow-md">
-                      <p className="font-medium">{label}</p>
-                      <p className="text-slate-500">Workers: <span className="font-bold">{payload[0].value}</span></p>
-                    </div>
-                  )
-                }}
-              />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={maxBarSize}>
-                {data.map((_, idx) => (
-                  <Cell key={idx} fill={colorPool[idx % colorPool.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        {/* On phones the inner track keeps a readable bar pitch and scrolls
+            sideways instead of squeezing 27 labels into ~350px. */}
+        <div className="dashboard-chart-scroll h-full">
+          <div className="dashboard-chart-body h-full max-h-[190px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 5, right: 5, left: compact ? -10 : -25, bottom: 0 }}>
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 9, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                  angle={compact ? -90 : -35}
+                  textAnchor="end"
+                  height={compact ? 120 : 50}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 10, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  cursor={{ fill: '#f1f5f9', opacity: 0.5 }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null
+                    return (
+                      <div className="rounded-md border bg-white px-2 py-1 text-xs shadow-md">
+                        <p className="font-medium">{label}</p>
+                        <p className="text-slate-500">Workers: <span className="font-bold">{payload[0].value}</span></p>
+                      </div>
+                    )
+                  }}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={maxBarSize}>
+                  {data.map((_, idx) => (
+                    <Cell key={idx} fill={colorPool[idx % colorPool.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -591,17 +599,17 @@ function DashboardSkeleton() {
         <Skeleton className="h-6 w-48" />
         <Skeleton className="h-3 w-72" />
       </div>
-      <div className="flex-1 grid grid-cols-5 gap-2">
+      <div className="dashboard-kpi-grid flex-1 grid grid-cols-5 gap-2">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="rounded-xl" />
         ))}
       </div>
-      <div className="flex-1 grid grid-cols-4 gap-2">
+      <div className="dashboard-chart-grid flex-1 grid grid-cols-4 gap-2">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="rounded-xl" />
         ))}
       </div>
-      <div className="flex-1 grid grid-cols-4 gap-2">
+      <div className="dashboard-chart-grid flex-1 grid grid-cols-4 gap-2">
         <Skeleton className="rounded-xl" />
         <Skeleton className="col-span-3 rounded-xl" />
       </div>
@@ -858,13 +866,13 @@ export default function DashboardView() {
   ]
 
   return (
-    <div className="h-full flex flex-col gap-2 overflow-hidden">
+    <div className="dashboard-view-root h-full flex flex-col gap-2 overflow-hidden">
       {/* ────── Hero Header with 1/4 Greeting & Compact 50% Width Filters ────── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="shrink-0 rounded-xl bg-gradient-to-r from-teal-50 via-cyan-50/80 to-teal-50/60 border border-teal-100/70 p-2 sm:px-3 sm:py-1.5 shadow-2xs"
+        className="dashboard-header shrink-0 rounded-xl bg-gradient-to-r from-teal-50 via-cyan-50/80 to-teal-50/60 border border-teal-100/70 p-2 sm:px-3 sm:py-1.5 shadow-2xs"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
           {/* Left: Good Morning Greeting */}
@@ -886,7 +894,7 @@ export default function DashboardView() {
           </div>
 
           {/* Right: Filters decreased in width by 50% (compact, right-aligned) */}
-          <div className="flex items-center justify-end flex-wrap sm:flex-nowrap gap-1.5 shrink-0 max-w-full sm:max-w-[50%]">
+          <div className="dashboard-header-filters flex items-center justify-end flex-wrap sm:flex-nowrap gap-1.5 shrink-0 max-w-full sm:max-w-[50%]">
             {/* Date Range Filter */}
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
 
@@ -960,7 +968,7 @@ export default function DashboardView() {
 
       {/* ────── Main Content: CSS Grid — left dashboard + right panel ────── */}
       <div
-        className="flex-1 min-h-0 grid overflow-hidden"
+        className="dashboard-main-grid flex-1 min-h-0 grid overflow-hidden"
         style={{
           gridTemplateColumns: '1fr 372px',
           gap: '8px',
@@ -968,7 +976,7 @@ export default function DashboardView() {
         }}
       >
         {/* LEFT: Dashboard area — 3 rows (KPI / Donuts / Camps) */}
-        <div className="min-w-0 grid overflow-hidden" style={{
+        <div className="dashboard-left-col min-w-0 grid overflow-hidden" style={{
           gridTemplateRows: DASH_GRID_ROWS,
           gap: '6px',
         }}>
@@ -977,7 +985,7 @@ export default function DashboardView() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
-            className="grid min-h-0"
+            className="dashboard-kpi-grid grid min-h-0"
             style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}
           >
             <StatCard title="Total Workforce" icon={Users} iconBg="bg-teal-500" bigNumber={String(dash.totalWorkers)} unit="workers" subtitle="Male vs. Female" segments={[{ label: 'Male', value: maleCount, color: DONUT_COLORS.male }, { label: 'Female', value: femaleCount, color: DONUT_COLORS.female }, ...(otherGender > 0 ? [{ label: 'Other', value: otherGender, color: '#94a3b8' }] : [])]} />
@@ -992,7 +1000,7 @@ export default function DashboardView() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="grid min-h-0"
+            className="dashboard-chart-grid grid min-h-0"
             style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}
           >
             <StatCard
@@ -1042,7 +1050,7 @@ export default function DashboardView() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
-            className="grid min-h-0"
+            className="dashboard-row3-grid grid min-h-0"
             style={{ gridTemplateColumns: '322px 1fr', gap: '8px' }}
           >
             <RankedListCard title="Camps per Contractor" icon={Building2} items={campsPerContractorData} colorPool={['#8b5cf6', '#ec4899', '#0ea5e9', '#eab308', '#f97316', '#14b8a6', '#94a3b8']} className="border-none shadow-none" />
@@ -1055,12 +1063,12 @@ export default function DashboardView() {
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.15 }}
-          className="overflow-hidden"
+          className="dashboard-right-panel overflow-hidden"
           style={{ scrollbarGutter: 'stable' }}
         >
-          <div className="h-full grid overflow-hidden" style={{ gridTemplateRows: DASH_GRID_ROWS, gap: '6px', scrollbarGutter: 'stable' }}>
+          <div className="dashboard-right-grid h-full grid overflow-hidden" style={{ gridTemplateRows: DASH_GRID_ROWS, gap: '6px', scrollbarGutter: 'stable' }}>
             {/* Rows 1-2: Recent Activity — spans both KPI rows */}
-            <Card className="row-start-1 row-end-3 min-h-0 overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col py-0 gap-0">
+            <Card className="dashboard-activity-card row-start-1 row-end-3 min-h-0 overflow-hidden border-teal-100/60 bg-white shadow-sm flex flex-col py-0 gap-0">
               <CardHeader className="p-1 pb-0 shrink-0">
                 <div className="flex items-center gap-1">
                   <div className="rounded-md bg-gradient-to-br from-teal-500/15 to-cyan-500/15 p-1">
@@ -1109,7 +1117,7 @@ export default function DashboardView() {
             </Card>
 
             {/* Row 3: Photos — same row as Workforce per Camp, so the two align */}
-            <div className="row-start-3 row-end-4 min-h-0">
+            <div className="dashboard-photos-cell row-start-3 row-end-4 min-h-0">
               <PhotoCarouselCard items={photoItems} onSelect={setPreviewPhoto} />
             </div>
 
@@ -1124,9 +1132,9 @@ export default function DashboardView() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.2 }}
-        className="shrink-0"
+        className="dashboard-quick-actions-wrap shrink-0"
       >
-        <div className="grid grid-cols-5 gap-3 w-full">
+        <div className="dashboard-quick-actions grid grid-cols-5 gap-3 w-full">
           {[
             { icon: UserPlus, label: 'Register Worker', action: 'worker-form' as const, bg: 'bg-teal-500' },
             { icon: FileWarning, label: 'Log Incident', action: 'incident-form' as const, bg: 'bg-rose-500' },

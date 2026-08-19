@@ -4,6 +4,7 @@ import { useNavStore, type PageId } from '@/stores/nav-store'
 import { useAuthStore, rolePermissions, roleLabels } from '@/lib/auth-store'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
+import { useCompactUi } from '@/hooks/use-compact-layout'
 import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard,
@@ -30,6 +31,8 @@ import {
   User as UserIcon,
   Calendar,
   LogOut,
+  Monitor,
+  Smartphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -83,7 +86,7 @@ function getInitials(name: string): string {
 }
 
 export function SidebarNav() {
-  const { activePage, setPage, sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed, mobileView } = useNavStore()
+  const { activePage, setPage, sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed, mobileView, toggleMobileView } = useNavStore()
   const { logout, userName, role } = useAuthStore()
   const permissions = rolePermissions[role] ?? rolePermissions.SAFETY_OFFICER
   const { theme, setTheme } = useTheme()
@@ -109,6 +112,7 @@ export function SidebarNav() {
     fetchNotifications()
   }, [fetchNotifications])
 
+  const compactUi = useCompactUi()
   const filteredItems = navItems.filter(item => permissions.modules.includes(item.id))
   // When mobile view is forced, the sidebar always behaves as a mobile overlay
   // (never collapsed, always slide-in) regardless of screen size.
@@ -159,15 +163,17 @@ export function SidebarNav() {
       )}>
         {/* Header */}
         <div className={cn(
-          'flex items-center border-b border-teal-100/60 shrink-0',
+          'flex items-center border-b border-teal-100/60 shrink-0 overflow-hidden',
           collapsed ? 'h-14 justify-center px-2' : 'h-20 px-3'
         )}>
+          {/* min-w-0 so the logo shrinks instead of pushing the close button
+              past the sidebar edge, where it showed up over the page. */}
           <img
             src="/buildozer-logo.png"
             alt="Buildozer"
             className={cn(
               'object-contain transition-all duration-300',
-              collapsed ? 'w-10 h-10 rounded-xl' : 'w-full rounded-2xl'
+              collapsed ? 'w-10 h-10 rounded-xl' : 'min-w-0 flex-1 rounded-2xl'
             )}
           />
           {/* Mobile close */}
@@ -234,6 +240,34 @@ export function SidebarNav() {
           collapsed ? 'px-1.5' : 'px-2.5'
         )}>
           <div className={cn('flex flex-col gap-1', collapsed && 'items-center')}>
+            {/* Mobile view toggle */}
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleMobileView}
+                    className="h-9 w-9 rounded-lg text-slate-600 hover:bg-teal-50 hover:text-teal-700"
+                    aria-label={mobileView ? 'Exit mobile view' : 'Open mobile view'}
+                  >
+                    {mobileView ? <Monitor className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{mobileView ? 'Exit Mobile View' : 'Mobile View'}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={toggleMobileView}
+                aria-label={mobileView ? 'Exit mobile view' : 'Open mobile view'}
+                className="justify-start gap-3 h-9 px-3 rounded-lg text-slate-600 hover:bg-teal-50 hover:text-teal-700 font-medium"
+              >
+                {mobileView ? <Monitor className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+                <span>{mobileView ? 'Desktop View' : 'Mobile View'}</span>
+              </Button>
+            )}
+
             {/* Dark/Light mode toggle */}
             {collapsed ? (
               <Tooltip>
@@ -424,16 +458,16 @@ export function SidebarNav() {
         </button>
       </aside>
 
-      {/* Mobile floating menu button (also shown on desktop when mobile view is forced) */}
-      <button
-        className={cn(
-          'fixed bottom-4 left-4 z-30 h-12 w-12 rounded-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/30 flex items-center justify-center active:scale-95 transition-transform',
-          forceMobile ? '' : 'lg:hidden'
-        )}
-        onClick={() => setSidebarOpen(true)}
-      >
-        <Menu className="h-5 w-5" />
-      </button>
+      {/* Floating menu button — only for viewports that have neither the
+          in-flow sidebar nor the bottom tab bar. */}
+      {!compactUi && (
+        <button
+          className="fixed bottom-4 left-4 z-30 h-12 w-12 rounded-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/30 flex items-center justify-center active:scale-95 transition-transform lg:hidden"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
     </TooltipProvider>
   )
 }

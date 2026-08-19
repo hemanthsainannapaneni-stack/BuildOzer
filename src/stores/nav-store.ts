@@ -93,7 +93,7 @@ export const useNavStore = create<NavState>((set, get) => ({
     const next = !get().mobileView
     // When entering mobile view, close the sidebar overlay so the framed
     // content is visible. The FAB remains available to re-open it.
-    set(next ? { mobileView: true, sidebarOpen: false } : { mobileView: false })
+    set({ mobileView: next, sidebarOpen: false })
   },
   goBack: () => {
     const current = get().activePage

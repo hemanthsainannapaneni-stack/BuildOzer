@@ -4,9 +4,11 @@ import { useAuthStore } from '@/lib/auth-store'
 import { useNavStore } from '@/stores/nav-store'
 import { SidebarNav } from './sidebar-nav'
 import { TopBar } from './top-bar'
+import { BottomNav } from './bottom-nav'
 import { LoginScreen } from './login-screen'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useIsCompactViewport } from '@/hooks/use-compact-layout'
 
 // Dialog-based wizards (always mounted, conditionally visible)
 import WorkerFormDialog from '@/components/modules/worker-form-dialog'
@@ -76,6 +78,15 @@ export function AppShell() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const activePage = useNavStore(s => s.activePage)
   const mobileView = useNavStore(s => s.mobileView)
+  const setSidebarOpen = useNavStore(s => s.setSidebarOpen)
+  // Real narrow screens get the same phone layout as the preview frame.
+  const isCompactViewport = useIsCompactViewport()
+
+  // The sidebar starts open, which on a phone means the menu covers the app on
+  // arrival — there it is an overlay, so keep it shut until the user asks.
+  useEffect(() => {
+    if (isCompactViewport) setSidebarOpen(false)
+  }, [isCompactViewport, setSidebarOpen])
 
   if (!isAuthenticated) return <LoginScreen />
 
@@ -88,18 +99,30 @@ export function AppShell() {
   )
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen min-w-0 overflow-hidden bg-background">
       <SidebarNav />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex min-w-0 flex-col overflow-hidden">
         {mobileView ? (
           <div className="flex-1 overflow-hidden bg-muted/50 flex items-stretch justify-center p-0 sm:p-4 lg:p-6">
-            <div className="mobile-frame w-full max-w-[420px] h-full bg-background shadow-2xl ring-1 ring-black/5 sm:rounded-[1.75rem] overflow-hidden flex flex-col">
+            {/* `relative` anchors the bottom nav's More sheet inside the frame */}
+            <div className="mobile-frame compact-ui relative w-full max-w-[420px] h-full bg-background shadow-2xl ring-1 ring-black/5 sm:rounded-[1.75rem] overflow-hidden flex flex-col">
               {/* TopBar inside the mobile frame so it aligns with content */}
               <TopBar />
-              <main className="flex-1 overflow-y-auto">
-                <div className="p-4">{pageContent}</div>
+              <main className="flex-1 overflow-y-auto overscroll-contain">
+                <div className="p-3 pb-4">{pageContent}</div>
               </main>
+              <BottomNav />
             </div>
+          </div>
+        ) : isCompactViewport ? (
+          /* Real phone/tablet: same phone layout, no frame chrome — header on
+             top, content scrolling between, tab bar pinned below. */
+          <div className="compact-ui relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <TopBar />
+            <main className="flex-1 overflow-y-auto overscroll-contain">
+              <div className="px-3 pt-3 pb-4">{pageContent}</div>
+            </main>
+            <BottomNav />
           </div>
         ) : (
           <>

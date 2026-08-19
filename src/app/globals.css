@@ -212,72 +212,237 @@
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Mobile frame: simulate a narrow viewport inside the 420px
-   preview frame. Tailwind's sm:/lg:/xl: breakpoints respond to
-   the real browser viewport (desktop-sized), so we override them
-   here to force mobile-appropriate layouts inside the frame.
-   ───────────────────────────────────────────────────────────── */
-.mobile-frame {
-  container-type: inline-size;
+/* ═════════════════════════════════════════════════════════════
+   Compact (phone) layout
+
+   `.compact-ui` marks a region that must lay out like a phone
+   app. AppShell puts it on the mobile preview frame and on the
+   real content area below the lg breakpoint, so every rule here
+   holds on an actual phone as well as inside the preview.
+
+   Layout only — nothing here fakes a breakpoint (see the
+   `.mobile-frame` block below for that).
+   ═════════════════════════════════════════════════════════════ */
+
+/* Wide content (tables, charts) scrolls inside its own box rather
+   than pushing the page sideways. */
+.compact-ui [class~="overflow-x-auto"] {
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
 
-/* 4-column grids (stat cards, etc.) → 2 columns on mobile frame */
-.mobile-frame .lg\:grid-cols-4,
-.mobile-frame .xl\:grid-cols-4,
-.mobile-frame .sm\:grid-cols-4,
-.mobile-frame .md\:grid-cols-4 {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-}
-
-/* 3-column grids → 2 columns on mobile frame */
-.mobile-frame .lg\:grid-cols-3,
-.mobile-frame .xl\:grid-cols-3,
-.mobile-frame .md\:grid-cols-3,
-.mobile-frame .sm\:grid-cols-3 {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-}
-
-/* 2-column side-by-side content (charts, detail panels) → 1 column (stack) */
-.mobile-frame .lg\:grid-cols-2,
-.mobile-frame .xl\:grid-cols-2 {
-  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
-}
-
-/* md:grid-cols-2 stays at 2 columns (fine for mobile stat pairs) */
-
-/* Views with hardcoded viewport height → auto height so content flows */
-.mobile-frame .h-\[calc\(100vh-6rem\)\],
-.mobile-frame .h-\[calc\(100vh-7rem\)\],
-.mobile-frame .h-\[calc\(100vh-8rem\)\] {
+/* Views pinned to a viewport-height box flow with the page instead. */
+.compact-ui [class~="h-[calc(100vh-6rem)]"],
+.compact-ui [class~="h-[calc(100vh-7rem)]"],
+.compact-ui [class~="h-[calc(100vh-8rem)]"] {
   height: auto !important;
   min-height: 0 !important;
   overflow: visible !important;
 }
 
-/* Tables and wide content: ensure horizontal scroll instead of overflow */
-.mobile-frame .overflow-x-auto {
-  -webkit-overflow-scrolling: touch;
-  max-width: 100%;
+/* ── Dashboard ──────────────────────────────────────────────
+   The dashboard packs itself into a fixed two-column, three-row
+   grid using inline templates. Here every section becomes a
+   full-width block in one scrolling column. Cards that host a
+   chart or a scroll area also need an explicit height: they size
+   themselves with `h-full`, which collapses to nothing once the
+   parent stops being a sized grid row — that collapse is what
+   made tiles pile on top of each other.
+   ─────────────────────────────────────────────────────────── */
+
+.compact-ui .dashboard-view-root {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  gap: 0.625rem;
 }
 
-/* Ensure the content wrapper doesn't clip wide tables — let them scroll */
+/* Quick actions ride directly under the header on a phone. */
+.compact-ui .dashboard-header { order: 0; }
+.compact-ui .dashboard-quick-actions-wrap { order: 1; }
+.compact-ui .dashboard-main-grid { order: 2; }
+
+.compact-ui .dashboard-main-grid,
+.compact-ui .dashboard-left-col,
+.compact-ui .dashboard-right-panel,
+.compact-ui .dashboard-right-grid,
+.compact-ui .dashboard-row3-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.625rem !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+/* Header: greeting on its own line, filters as a two-up grid below it.
+   (`sm:flex-row` would otherwise sit them side by side and push the filter
+   grid past the right edge.) */
+.compact-ui .dashboard-header > div {
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+/* Header: greeting on its own line, filters as a two-up grid. */
+.compact-ui .dashboard-header-filters {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.375rem !important;
+  width: 100%;
+  max-width: 100% !important;
+  justify-content: stretch;
+}
+
+.compact-ui .dashboard-header-filters > * {
+  width: 100% !important;
+  min-width: 0;
+}
+
+/* Date range picker (first control) gets the full row. */
+.compact-ui .dashboard-header-filters > :first-child {
+  grid-column: 1 / -1;
+}
+
+.compact-ui .dashboard-header-filters > :first-child > button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* KPI and status cards: two per row, tall enough that no tile clips. */
+.compact-ui .dashboard-kpi-grid,
+.compact-ui .dashboard-chart-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: none !important;
+  grid-auto-rows: minmax(126px, auto) !important;
+  gap: 0.5rem !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+/* An odd card left over on the last row takes the whole row instead of
+   leaving a hole beside it. */
+.compact-ui .dashboard-kpi-grid > :last-child:nth-child(odd),
+.compact-ui .dashboard-chart-grid > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+/* Cards whose content is sized by the grid on desktop. */
+.compact-ui .dashboard-activity-card {
+  height: 20rem !important;
+  flex: none !important;
+}
+
+.compact-ui .dashboard-photos-cell {
+  height: 12rem !important;
+  flex: none !important;
+}
+
+/* Long tile labels ("Certificates", "Conditional") hyphenate rather than
+   splitting mid-word at the tile edge. */
+.compact-ui .stat-tile-label {
+  font-size: 0.5625rem;
+  letter-spacing: 0.01em;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+/* Bar chart: keep a readable bar pitch and scroll sideways. The left padding
+   is room for the rotated tick labels, which reach past the axis. */
+.compact-ui .dashboard-chart-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.compact-ui .dashboard-chart-body {
+  height: 18rem !important;
+  max-height: none !important;
+  min-width: 40rem;
+}
+
+/* Quick actions: two per row, odd one out spans the row. */
+.compact-ui .dashboard-quick-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.5rem !important;
+}
+
+.compact-ui .dashboard-quick-actions > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+/* Tablets and landscape phones fit a third column. Scoped to `main` — the
+   real content area — so the 420px preview frame keeps its phone layout even
+   though the browser window behind it is wide. */
+@media (min-width: 640px) {
+  main.compact-ui .dashboard-kpi-grid,
+  main.compact-ui .dashboard-chart-grid,
+  main.compact-ui .dashboard-quick-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  main.compact-ui .dashboard-kpi-grid > :last-child:nth-child(odd),
+  main.compact-ui .dashboard-chart-grid > :last-child:nth-child(odd),
+  main.compact-ui .dashboard-quick-actions > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  main.compact-ui .dashboard-chart-body {
+    min-width: 0;
+    padding-left: 0;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════
+   Mobile preview frame
+
+   Tailwind's sm:/md:/lg: variants answer to the real browser
+   viewport, which is desktop-sized behind the 420px preview
+   frame. These rules swap those variants back to their mobile
+   behaviour so the preview matches an actual phone. On a real
+   phone none of this is needed — the variants are already off.
+
+   NOTE: attribute selectors ([class~="md:hidden"]) instead of
+   escaped class selectors (.md\:hidden), because Tailwind 4's
+   processor strips custom rules that name its utility classes.
+   ═════════════════════════════════════════════════════════════ */
+
+.mobile-frame {
+  container-type: inline-size;
+}
+
+/* 4- and 5-column grids → 2 columns */
+.mobile-frame [class~="sm:grid-cols-4"],
+.mobile-frame [class~="md:grid-cols-4"],
+.mobile-frame [class~="lg:grid-cols-4"],
+.mobile-frame [class~="xl:grid-cols-4"],
+.mobile-frame [class~="sm:grid-cols-5"],
+.mobile-frame [class~="md:grid-cols-5"],
+.mobile-frame [class~="lg:grid-cols-5"],
+.mobile-frame [class~="xl:grid-cols-5"],
+.mobile-frame [class~="sm:grid-cols-3"],
+.mobile-frame [class~="md:grid-cols-3"],
+.mobile-frame [class~="lg:grid-cols-3"],
+.mobile-frame [class~="xl:grid-cols-3"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* Side-by-side content panels → stacked */
+.mobile-frame [class~="lg:grid-cols-2"],
+.mobile-frame [class~="xl:grid-cols-2"] {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+/* md:grid-cols-2 stays at 2 columns (fine for mobile stat pairs) */
+
+/* Let the content wrapper hand wide tables to their own scroller. */
 .mobile-frame main > div {
   max-width: 100%;
   min-width: 0;
 }
 
-/* ── Breakpoint simulation: force mobile layouts inside the frame ──
-   Tailwind's sm:/md:/lg: respond to the real viewport (desktop-sized).
-   Inside the 420px frame we must swap them so mobile-optimized views
-   (cards, stacked filters, short labels) are shown instead.
-
-   NOTE: We use [class~="..."] attribute selectors instead of escaped
-   class selectors (.md\:hidden) because Tailwind 4's CSS processor
-   strips custom rules that reference its own utility class names.
-   Attribute selectors bypass that processing entirely.               */
-
-/* Show mobile-only elements (md:hidden / lg:hidden / sm:hidden) */
+/* Show mobile-only elements */
 .mobile-frame [class~="sm:hidden"],
 .mobile-frame [class~="md:hidden"],
 .mobile-frame [class~="lg:hidden"],
@@ -285,37 +450,45 @@
   display: block !important;
 }
 
-/* Hide desktop-only elements (hidden md:block / hidden lg:block) */
+/* Hide desktop-only elements */
 .mobile-frame [class~="hidden"][class~="sm:block"],
 .mobile-frame [class~="hidden"][class~="md:block"],
 .mobile-frame [class~="hidden"][class~="lg:block"],
 .mobile-frame [class~="hidden"][class~="xl:block"],
+.mobile-frame [class~="hidden"][class~="sm:flex"],
 .mobile-frame [class~="hidden"][class~="md:flex"],
-.mobile-frame [class~="hidden"][class~="lg:flex"],
-.mobile-frame [class~="hidden"][class~="sm:flex"] {
+.mobile-frame [class~="hidden"][class~="lg:flex"] {
   display: none !important;
 }
 
-/* Stack rows that are side-by-side on sm+ into columns */
+/* Rows that go side-by-side on sm+ stack instead */
 .mobile-frame [class~="sm:flex-row"],
 .mobile-frame [class~="md:flex-row"],
 .mobile-frame [class~="lg:flex-row"] {
   flex-direction: column !important;
 }
 
-/* Show mobile text variants in buttons (sm:hidden spans) and hide desktop ones (sm:inline spans) */
+.mobile-frame [class~="sm:flex-nowrap"],
+.mobile-frame [class~="md:flex-nowrap"],
+.mobile-frame [class~="lg:flex-nowrap"] {
+  flex-wrap: wrap !important;
+  justify-content: flex-start !important;
+}
+
+/* Inline text variants: show the short one, hide the long one */
 .mobile-frame span[class~="sm:hidden"],
 .mobile-frame span[class~="md:hidden"],
 .mobile-frame span[class~="lg:hidden"] {
   display: inline !important;
 }
+
 .mobile-frame span[class~="sm:inline"],
 .mobile-frame span[class~="md:inline"],
 .mobile-frame span[class~="lg:inline"] {
   display: none !important;
 }
 
-/* Force fixed-width inputs/selects to full width in mobile frame */
+/* Fixed-width controls fill the row */
 .mobile-frame [class~="sm:w-44"],
 .mobile-frame [class~="sm:w-40"],
 .mobile-frame [class~="sm:w-36"],
@@ -330,28 +503,7 @@
   width: 100% !important;
 }
 
-/* Filter/toolbars: allow wrapping instead of overflowing horizontally */
-.mobile-frame .flex.flex-wrap {
-  gap: 0.5rem !important;
+/* Toolbars wrap with breathing room instead of overflowing */
+.mobile-frame [class~="flex-wrap"] {
+  gap: 0.5rem;
 }
-
-/* Slightly reduce large heading sizes for better mobile fit */
-.mobile-frame h1 {
-  font-size: 1.5rem !important;
-  line-height: 2rem !important;
-}
-
-/* Allow truncated text to wrap instead of being cut off (better mobile readability) */
-.mobile-frame .truncate {
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  word-break: break-word !important;
-}
-
-/* Slightly smaller secondary text so descriptions fit in narrow cards */
-.mobile-frame .text-xs {
-  font-size: 0.6875rem !important;
-  line-height: 1rem !important;
-}
-
