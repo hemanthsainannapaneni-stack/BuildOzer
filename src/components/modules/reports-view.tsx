@@ -877,19 +877,21 @@ export default function ReportsView() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* The hook classes let the phone layout shrink these tiles — see the
+            reports block in globals.css. */}
+        <div className="reports-category-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {CATEGORIES.map((cat) => (
             <Card
               key={cat.id}
-              className={`cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] border ${cat.borderColor}`}
+              className={`reports-category-card cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] border ${cat.borderColor}`}
               onClick={() => setSelectedCategory(cat.id)}
             >
-              <CardContent className="p-5">
-                <div className={`w-10 h-10 rounded-lg ${cat.bgColor} flex items-center justify-center mb-3`}>
+              <CardContent className="reports-category-body p-5">
+                <div className={`reports-category-icon w-10 h-10 rounded-lg ${cat.bgColor} flex items-center justify-center mb-3`}>
                   <cat.icon className={`h-5 w-5 ${cat.color}`} />
                 </div>
-                <h3 className="font-semibold text-sm">{cat.label}</h3>
-                <p className="text-xs text-muted-foreground mt-1">{cat.description}</p>
+                <h3 className="reports-category-label font-semibold text-sm">{cat.label}</h3>
+                <p className="reports-category-desc text-xs text-muted-foreground mt-1">{cat.description}</p>
               </CardContent>
             </Card>
           ))}

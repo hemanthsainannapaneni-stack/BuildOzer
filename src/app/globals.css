@@ -403,6 +403,53 @@
   }
 }
 
+/* ── Reports category tiles ─────────────────────────────────
+   Each tile is an icon, a label and one line of description, but
+   the base Card's py-6 stacks on top of the body's p-5, so on a
+   phone a tile is mostly empty space and two of them fill the
+   screen. Tighten the box, hold the grid at two columns (a real
+   phone sits below sm:, where it would otherwise go single file),
+   and let the per-category colour live in the icon chip alone so
+   the grid reads as one calm block.
+   ─────────────────────────────────────────────────────────── */
+
+.compact-ui .reports-category-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.5rem;
+}
+
+.compact-ui .reports-category-card {
+  padding-block: 0;
+  border-color: var(--border);
+}
+
+.compact-ui .reports-category-body {
+  padding: 0.625rem;
+}
+
+.compact-ui .reports-category-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-bottom: 0.375rem;
+  border-radius: 0.5rem;
+}
+
+.compact-ui .reports-category-icon svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.compact-ui .reports-category-label {
+  font-size: 0.8125rem;
+  line-height: 1.15rem;
+}
+
+.compact-ui .reports-category-desc {
+  margin-top: 0.125rem;
+  font-size: 0.6875rem;
+  line-height: 0.95rem;
+}
+
 /* ═════════════════════════════════════════════════════════════
    Mobile preview frame
 
