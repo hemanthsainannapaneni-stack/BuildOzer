@@ -495,7 +495,7 @@ export default function IdCardsView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">ID Cards</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">ID Cards</h1>
           <p className="text-sm text-muted-foreground mt-1">
             View and download identity cards for workers and staff.
           </p>

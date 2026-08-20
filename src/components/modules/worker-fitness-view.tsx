@@ -168,7 +168,7 @@ export default function WorkerFitnessView() {
           <span className="sr-only">Back</span>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Fitness & Experience</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">Fitness & Experience</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Record worker fitness status and work experience
           </p>

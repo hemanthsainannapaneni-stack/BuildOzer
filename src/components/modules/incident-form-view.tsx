@@ -165,7 +165,7 @@ export default function IncidentFormView() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <h1 className="text-xl font-bold tracking-tight">Log New Incident</h1>
+        <h1 className="page-title text-xl font-bold tracking-tight">Log New Incident</h1>
       </div>
 
       {/* Incident Details */}

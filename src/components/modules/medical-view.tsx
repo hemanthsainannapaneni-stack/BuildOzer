@@ -619,17 +619,17 @@ export default function MedicalView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Medical Records</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">Medical Records</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage health examinations across all workers
           </p>
         </div>
       </div>
 
-      {/* Two-panel layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Two-panel layout — stacks to worker picker over detail on narrow screens */}
+      <div className="medical-view-root grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* Left Panel: Worker List */}
-        <Card className="lg:col-span-4">
+        <Card className="medical-worker-panel lg:col-span-4">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-base">Workers</CardTitle>
@@ -652,7 +652,9 @@ export default function MedicalView() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[500px] lg:h-[600px]">
+            {/* Short on narrow screens so roughly four workers show and the
+                record panel below stays reachable without a long scroll. */}
+            <ScrollArea className="medical-worker-list h-[264px] lg:h-[600px]">
               {workersLoading ? (
                 <div className="p-4"><WorkerListSkeleton /></div>
               ) : workers.length === 0 ? (
@@ -693,7 +695,7 @@ export default function MedicalView() {
         </Card>
 
         {/* Right Panel: Medical Records */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className="medical-record-panel lg:col-span-8 space-y-4">
           {!selectedWorker ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-20 text-muted-foreground">

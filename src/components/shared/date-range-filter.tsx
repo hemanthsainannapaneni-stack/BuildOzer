@@ -20,6 +20,20 @@ interface Props {
 const toKey = (d: Date) => format(d, 'yyyy-MM-dd')
 const fromKey = (s: string) => (s ? parseISO(s) : undefined)
 
+/**
+ * Local calendar day (yyyy-MM-dd) of a stored timestamp — the day a table
+ * actually renders. Timestamps are stored in UTC, so slicing the raw ISO
+ * string would file a 01 Apr record (18:30Z on 31 Mar in IST) under 31 Mar.
+ * Range filters must compare against this, not the raw string.
+ */
+export function localDay(dateStr: string): string {
+  try {
+    return format(parseISO(dateStr), 'yyyy-MM-dd')
+  } catch {
+    return ''
+  }
+}
+
 interface Preset {
   label: string
   range: () => { from: Date; to: Date }

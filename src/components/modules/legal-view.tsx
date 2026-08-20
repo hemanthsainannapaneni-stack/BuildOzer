@@ -30,6 +30,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { format, differenceInDays, parseISO } from 'date-fns'
 import { TableExportButton, type ExportColumn } from '@/components/ui/table-export-button'
+import DateRangeFilter, { localDay } from '@/components/shared/date-range-filter'
 
 // ---------- types ----------
 interface LegalCompliance {
@@ -75,6 +76,35 @@ function getExpiryInfo(expiryDate: string | null) {
   return { daysLeft, isExpired: daysLeft < 0, isExpiring: daysLeft >= 0 && daysLeft < 60 }
 }
 
+/**
+ * Whether a record belongs to a summary card. Expiring/Expired are derived from
+ * the actual expiry date as well as the stored status, so the tile counts and
+ * the filter have to share one rule or they disagree.
+ */
+function matchesLegalStatus(r: LegalCompliance, status: string): boolean {
+  const info = getExpiryInfo(r.expiryDate)
+  switch (status) {
+    case '':
+      return true
+    case 'Valid':
+      return r.status === 'Valid'
+    case 'ExpiringSoon':
+      return r.status === 'ExpiringSoon' || (!!r.expiryDate && info.isExpiring && r.status === 'Valid')
+    case 'Expired':
+      return r.status === 'Expired' || (!!r.expiryDate && info.isExpired)
+    default:
+      return r.status === status
+  }
+}
+
+/** The summary tiles, which double as the status filter ('' = all). */
+const LEGAL_CARDS = [
+  { label: 'Total Records', status: '', icon: Scale, valueColor: 'text-teal-700', bg: 'bg-teal-50 text-teal-700 border-teal-200', iconStyle: 'bg-teal-100 text-teal-600', outlineClass: 'outline-teal-600' },
+  { label: 'Valid', status: 'Valid', icon: CheckCircle2, valueColor: 'text-emerald-700', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', iconStyle: 'bg-emerald-100 text-emerald-600', outlineClass: 'outline-emerald-600' },
+  { label: 'Expiring Soon', status: 'ExpiringSoon', icon: Clock, valueColor: 'text-amber-700', bg: 'bg-amber-50 text-amber-700 border-amber-200', iconStyle: 'bg-amber-100 text-amber-600', outlineClass: 'outline-amber-600' },
+  { label: 'Expired', status: 'Expired', icon: XCircle, valueColor: 'text-rose-700', bg: 'bg-rose-50 text-rose-700 border-rose-200', iconStyle: 'bg-rose-100 text-rose-600', outlineClass: 'outline-rose-600' },
+]
+
 // ---------- main ----------
 export default function LegalView() {
   const role = useAuthStore((s) => s.role)
@@ -85,15 +115,19 @@ export default function LegalView() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [complianceType, setComplianceType] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 15
 
-  const hasActiveFilter = !!(search || complianceType || statusFilter)
+  const hasActiveFilter = !!(search || complianceType || statusFilter || dateFrom || dateTo)
   const clearFilters = () => {
     setSearch('')
     setDebouncedSearch('')
     setComplianceType('')
     setStatusFilter('')
+    setDateFrom('')
+    setDateTo('')
     setPage(1)
   }
 
@@ -119,15 +153,17 @@ export default function LegalView() {
   }
 
   // Build query params
+  // Status is filtered client-side rather than in the query: the summary cards
+  // are the status dimension, so their counts have to describe the set *before*
+  // it is applied, or picking one zeroes out the others.
   const queryParams = new URLSearchParams()
   if (debouncedSearch) queryParams.set('search', debouncedSearch)
   if (complianceType) queryParams.set('complianceType', complianceType)
-  if (statusFilter) queryParams.set('status', statusFilter)
   queryParams.set('limit', '100')
 
   // Fetch legal records
   const { data, isLoading } = useQuery<LegalListResponse>({
-    queryKey: ['legal', debouncedSearch, complianceType, statusFilter],
+    queryKey: ['legal', debouncedSearch, complianceType],
     queryFn: () => fetch(`/api/legal?${queryParams.toString()}`).then((r) => r.json()),
   })
 
@@ -137,18 +173,44 @@ export default function LegalView() {
     queryFn: () => fetch('/api/contractors').then((r) => r.json()),
   })
 
-  const records = data?.data ?? []
-  const total = data?.total ?? 0
+  const allRecords = data?.data ?? []
+
+  // Date range applies to expiry — the dimension the status cards are about.
+  const recordsBeforeStatus = useMemo(() => {
+    if (!dateFrom && !dateTo) return allRecords
+    return allRecords.filter((r) => {
+      if (!r.expiryDate) return false
+      const day = localDay(r.expiryDate)
+      if (!day) return false
+      if (dateFrom && day < dateFrom) return false
+      if (dateTo && day > dateTo) return false
+      return true
+    })
+  }, [allRecords, dateFrom, dateTo])
+
+  const records = useMemo(
+    () => recordsBeforeStatus.filter((r) => matchesLegalStatus(r, statusFilter)),
+    [recordsBeforeStatus, statusFilter],
+  )
 
   const { sorted, sortKey, sortDir, toggleSort } = useSort(records as (LegalCompliance & Record<string, unknown>)[])
   const sortedData = sorted
   const totalPages = Math.max(1, Math.ceil(sortedData.length / PAGE_SIZE))
   const pagedData = sortedData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  // Summary stats
-  const validCount = useMemo(() => records.filter((r) => r.status === 'Valid').length, [records])
-  const expiringCount = useMemo(() => records.filter((r) => r.status === 'ExpiringSoon' || (r.expiryDate && getExpiryInfo(r.expiryDate).isExpiring && r.status === 'Valid')).length, [records])
-  const expiredCount = useMemo(() => records.filter((r) => r.status === 'Expired' || (r.expiryDate && getExpiryInfo(r.expiryDate).isExpired)).length, [records])
+  // Summary stats — counted before the status filter so the tiles add up.
+  const statusCounts: Record<string, number> = {
+    '': recordsBeforeStatus.length,
+    Valid: recordsBeforeStatus.filter((r) => matchesLegalStatus(r, 'Valid')).length,
+    ExpiringSoon: recordsBeforeStatus.filter((r) => matchesLegalStatus(r, 'ExpiringSoon')).length,
+    Expired: recordsBeforeStatus.filter((r) => matchesLegalStatus(r, 'Expired')).length,
+  }
+
+  /** The summary cards double as the status filter; '' is "Total Records". */
+  const selectStatus = (next: string) => {
+    setStatusFilter((prev) => (prev === next ? '' : next))
+    setPage(1)
+  }
 
   // Create/Update mutation
   const saveMutation = useMutation({
@@ -289,9 +351,9 @@ export default function LegalView() {
       {/* ====== Header ====== */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Legal & Statutory Compliance</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">Legal & Statutory Compliance</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isLoading ? 'Loading...' : `${total} record${total !== 1 ? 's' : ''} tracked`}
+            {isLoading ? 'Loading...' : `${records.length} record${records.length !== 1 ? 's' : ''} tracked`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -327,27 +389,55 @@ export default function LegalView() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-          {[
-            { label: 'Total Records', value: total, icon: Scale, valueColor: 'text-teal-700', bg: 'bg-teal-50 text-teal-700 border-teal-200', iconStyle: 'bg-teal-100 text-teal-600' },
-            { label: 'Valid', value: validCount, icon: CheckCircle2, valueColor: 'text-emerald-700', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', iconStyle: 'bg-emerald-100 text-emerald-600' },
-            { label: 'Expiring Soon', value: expiringCount, icon: Clock, valueColor: 'text-amber-700', bg: 'bg-amber-50 text-amber-700 border-amber-200', iconStyle: 'bg-amber-100 text-amber-600' },
-            { label: 'Expired', value: expiredCount, icon: XCircle, valueColor: 'text-rose-700', bg: 'bg-rose-50 text-rose-700 border-rose-200', iconStyle: 'bg-rose-100 text-rose-600' },
-          ].map((c) => (
-            <Card key={c.label} className={`${c.bg} transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]`}>
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">{c.label}</p>
-                    <p className={`text-xl font-bold tracking-tight mt-1 ${c.valueColor}`}>{c.value}</p>
-                  </div>
-                  <div className={`rounded-xl p-2 shrink-0 ${c.iconStyle}`}>
-                    <c.icon className="h-5 w-5" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {LEGAL_CARDS.map((c) => {
+            const isActive = statusFilter === c.status
+            return (
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => selectStatus(c.status)}
+                aria-pressed={isActive}
+                title={`Show ${c.label.toLowerCase()}`}
+                className="text-left rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0d9488]"
+              >
+                <Card
+                  className={[
+                    c.bg,
+                    'cursor-pointer transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]',
+                    // Drawn inside the card — an outward ring is clipped by the
+                    // page container and crowds the sidebar.
+                    isActive ? `outline-2 -outline-offset-2 shadow-lg ${c.outlineClass}` : '',
+                  ].join(' ')}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 truncate">{c.label}</p>
+                        <p className={`text-xl font-bold tracking-tight mt-1 ${c.valueColor}`}>
+                          {statusCounts[c.status] ?? 0}
+                        </p>
+                      </div>
+                      <div className={`rounded-xl p-2 shrink-0 ${c.iconStyle}`}>
+                        <c.icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            )
+          })}
         </div>
+      )}
+
+      {/* Active-card context line */}
+      {!isLoading && (
+        <p className="text-xs text-muted-foreground shrink-0 -mt-1">
+          Showing{' '}
+          <span className="font-medium text-foreground">
+            {LEGAL_CARDS.find((c) => c.status === statusFilter)?.label ?? 'Total Records'}
+          </span>{' '}
+          — {records.length} record{records.length !== 1 ? 's' : ''}
+        </p>
       )}
 
       {/* ====== Filters ====== */}
@@ -380,6 +470,13 @@ export default function LegalView() {
                 <SelectItem value="Expired">Expired</SelectItem>
               </SelectContent>
             </Select>
+            {/* Expiry date — one calendar, presets plus a custom range */}
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onChange={(f, t) => { setDateFrom(f); setDateTo(t); setPage(1) }}
+              className="w-full sm:w-52"
+            />
             {hasActiveFilter && (
               <Button
                 variant="outline"

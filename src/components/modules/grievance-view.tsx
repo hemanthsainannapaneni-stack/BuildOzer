@@ -24,6 +24,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import PhotoUploader from '@/components/shared/photo-uploader'
 import { format, differenceInDays, parseISO } from 'date-fns'
 import { TableExportButton, type ExportColumn } from '@/components/ui/table-export-button'
+import DateRangeFilter, { localDay } from '@/components/shared/date-range-filter'
 
 // ---------- types ----------
 interface Grievance {
@@ -75,6 +76,15 @@ function getSLAInfo(dateRaised: string, slaDays: number) {
   return { daysElapsed, remaining, breached: remaining < 0 }
 }
 
+/** The summary tiles, which double as the status filter ('' = all). */
+const GRIEVANCE_CARDS = [
+  { label: 'Total', status: '', icon: MessageSquare, valueColor: 'text-teal-700', bg: 'bg-teal-50 text-teal-700 border-teal-200', iconStyle: 'bg-teal-100 text-teal-600', outlineClass: 'outline-teal-600' },
+  { label: 'Open', status: 'Open', icon: AlertTriangle, valueColor: 'text-emerald-700', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', iconStyle: 'bg-emerald-100 text-emerald-600', outlineClass: 'outline-emerald-600' },
+  { label: 'In Progress', status: 'InProgress', icon: Clock, valueColor: 'text-amber-700', bg: 'bg-amber-50 text-amber-700 border-amber-200', iconStyle: 'bg-amber-100 text-amber-600', outlineClass: 'outline-amber-600' },
+  { label: 'Resolved', status: 'Resolved', icon: CheckCircle2, valueColor: 'text-slate-700', bg: 'bg-slate-50 text-slate-700 border-slate-200', iconStyle: 'bg-slate-100 text-slate-600', outlineClass: 'outline-slate-600' },
+  { label: 'Escalated', status: 'Escalated', icon: ArrowUpRight, valueColor: 'text-rose-700', bg: 'bg-rose-50 text-rose-700 border-rose-200', iconStyle: 'bg-rose-100 text-rose-600', outlineClass: 'outline-rose-600' },
+]
+
 // ---------- main ----------
 export default function GrievanceView() {
   const role = useAuthStore((s) => s.role)
@@ -87,9 +97,11 @@ export default function GrievanceView() {
   const [severity, setSeverity] = useState('')
   const [status, setStatus] = useState('')
   const [poshOnly, setPoshOnly] = useState(false)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const hasActiveFilter = !!(search || category || severity || status || poshOnly)
+  const hasActiveFilter = !!(search || category || severity || status || poshOnly || dateFrom || dateTo)
   const clearFilters = () => {
     setSearch('')
     setDebouncedSearch('')
@@ -97,6 +109,8 @@ export default function GrievanceView() {
     setSeverity('')
     setStatus('')
     setPoshOnly(false)
+    setDateFrom('')
+    setDateTo('')
   }
 
   // Dialog state
@@ -121,29 +135,51 @@ export default function GrievanceView() {
     return () => clearTimeout(t)
   }
 
+  // Status is filtered client-side rather than in the query: the summary cards
+  // are the status dimension, so their counts have to describe the set *before*
+  // it is applied, or picking one zeroes out the others.
   const queryParams = new URLSearchParams()
   if (debouncedSearch) queryParams.set('search', debouncedSearch)
   if (category) queryParams.set('category', category)
   if (severity) queryParams.set('severity', severity)
-  if (status) queryParams.set('status', status)
   queryParams.set('limit', '100')
 
   const { data, isLoading } = useQuery<GrievancesResponse>({
-    queryKey: ['grievances', debouncedSearch, category, severity, status],
+    queryKey: ['grievances', debouncedSearch, category, severity],
     queryFn: () => fetch(`/api/grievances?${queryParams.toString()}`).then((r) => r.json()),
   })
 
-  const grievances = useMemo(() => {
+  // Everything except status — what the summary cards count.
+  const grievancesBeforeStatus = useMemo(() => {
     let list = data?.data ?? []
     if (poshOnly) list = list.filter((g) => g.isPOSH)
+    if (dateFrom || dateTo) {
+      list = list.filter((g) => {
+        const day = localDay(g.dateRaised)
+        if (!day) return false
+        if (dateFrom && day < dateFrom) return false
+        if (dateTo && day > dateTo) return false
+        return true
+      })
+    }
     return list
-  }, [data?.data, poshOnly])
+  }, [data?.data, poshOnly, dateFrom, dateTo])
 
-  const total = data?.total ?? 0
-  const openCount = grievances.filter((g) => g.status === 'Open').length
-  const progressCount = grievances.filter((g) => g.status === 'InProgress').length
-  const resolvedCount = grievances.filter((g) => g.status === 'Resolved').length
-  const escalatedCount = grievances.filter((g) => g.status === 'Escalated').length
+  const grievances = useMemo(
+    () => (status ? grievancesBeforeStatus.filter((g) => g.status === status) : grievancesBeforeStatus),
+    [grievancesBeforeStatus, status],
+  )
+
+  const statusCounts: Record<string, number> = {
+    '': grievancesBeforeStatus.length,
+    Open: grievancesBeforeStatus.filter((g) => g.status === 'Open').length,
+    InProgress: grievancesBeforeStatus.filter((g) => g.status === 'InProgress').length,
+    Resolved: grievancesBeforeStatus.filter((g) => g.status === 'Resolved').length,
+    Escalated: grievancesBeforeStatus.filter((g) => g.status === 'Escalated').length,
+  }
+
+  /** The summary cards double as the status filter; '' is "Total". */
+  const selectStatus = (next: string) => setStatus((prev) => (prev === next ? '' : next))
 
   const createMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -223,9 +259,9 @@ export default function GrievanceView() {
       {/* ====== Header ====== */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Grievance Redressal</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">Grievance Redressal</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isLoading ? 'Loading...' : `${total} grievance${total !== 1 ? 's' : ''}`}
+            {isLoading ? 'Loading...' : `${grievances.length} grievance${grievances.length !== 1 ? 's' : ''}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -252,28 +288,55 @@ export default function GrievanceView() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {[
-            { label: 'Total', value: total, icon: MessageSquare, valueColor: 'text-teal-700', bg: 'bg-teal-50 text-teal-700 border-teal-200', iconStyle: 'bg-teal-100 text-teal-600' },
-            { label: 'Open', value: openCount, icon: AlertTriangle, valueColor: 'text-emerald-700', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', iconStyle: 'bg-emerald-100 text-emerald-600' },
-            { label: 'In Progress', value: progressCount, icon: Clock, valueColor: 'text-amber-700', bg: 'bg-amber-50 text-amber-700 border-amber-200', iconStyle: 'bg-amber-100 text-amber-600' },
-            { label: 'Resolved', value: resolvedCount, icon: CheckCircle2, valueColor: 'text-slate-700', bg: 'bg-slate-50 text-slate-700 border-slate-200', iconStyle: 'bg-slate-100 text-slate-600' },
-            { label: 'Escalated', value: escalatedCount, icon: ArrowUpRight, valueColor: 'text-rose-700', bg: 'bg-rose-50 text-rose-700 border-rose-200', iconStyle: 'bg-rose-100 text-rose-600' },
-          ].map((c) => (
-            <Card key={c.label} className={`${c.bg} transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]`}>
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">{c.label}</p>
-                    <p className={`text-xl font-bold tracking-tight mt-1 ${c.valueColor}`}>{c.value}</p>
-                  </div>
-                  <div className={`rounded-xl p-2 shrink-0 ${c.iconStyle}`}>
-                    <c.icon className="h-5 w-5" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {GRIEVANCE_CARDS.map((c) => {
+            const isActive = status === c.status
+            return (
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => selectStatus(c.status)}
+                aria-pressed={isActive}
+                title={`Show ${c.label.toLowerCase()}`}
+                className="text-left rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0d9488]"
+              >
+                <Card
+                  className={[
+                    c.bg,
+                    'cursor-pointer transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]',
+                    // Drawn inside the card — an outward ring is clipped by the
+                    // page container and crowds the sidebar.
+                    isActive ? `outline-2 -outline-offset-2 shadow-lg ${c.outlineClass}` : '',
+                  ].join(' ')}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 truncate">{c.label}</p>
+                        <p className={`text-xl font-bold tracking-tight mt-1 ${c.valueColor}`}>
+                          {statusCounts[c.status] ?? 0}
+                        </p>
+                      </div>
+                      <div className={`rounded-xl p-2 shrink-0 ${c.iconStyle}`}>
+                        <c.icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            )
+          })}
         </div>
+      )}
+
+      {/* Active-card context line */}
+      {!isLoading && (
+        <p className="text-xs text-muted-foreground -mt-1">
+          Showing{' '}
+          <span className="font-medium text-foreground">
+            {GRIEVANCE_CARDS.find((c) => c.status === status)?.label ?? 'Total'}
+          </span>{' '}
+          — {grievances.length} grievance{grievances.length !== 1 ? 's' : ''}
+        </p>
       )}
 
       {/* ====== Filters ====== */}
@@ -312,6 +375,13 @@ export default function GrievanceView() {
                 <SelectItem value="Escalated">Escalated</SelectItem>
               </SelectContent>
             </Select>
+            {/* Date raised — one calendar, presets plus a custom range */}
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onChange={(f, t) => { setDateFrom(f); setDateTo(t) }}
+              className="w-full sm:w-52"
+            />
             <div className="flex items-center gap-2">
               <Checkbox checked={poshOnly} onCheckedChange={(v) => setPoshOnly(!!v)} id="posh-toggle" />
               <Label htmlFor="posh-toggle" className="text-sm whitespace-nowrap cursor-pointer">POSH Only</Label>

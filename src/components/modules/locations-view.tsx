@@ -198,7 +198,7 @@ export default function LocationsView() {
       {/* ====== Page Header ====== */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Locations</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">Locations</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage labour camps across contractors and projects.
           </p>

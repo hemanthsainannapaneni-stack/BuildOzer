@@ -231,6 +231,15 @@
   max-width: 100%;
 }
 
+/* The phone header (TopBar) already carries the page name, so the
+   in-page <h1> would print it a second time. Hide it and let the
+   sub-heading under it — often a live count — start the page. Only
+   titles that merely repeat the header carry `page-title`; record
+   titles (a worker's name, an incident number) do not. */
+.compact-ui .page-title {
+  display: none;
+}
+
 /* Views pinned to a viewport-height box flow with the page instead. */
 .compact-ui [class~="h-[calc(100vh-6rem)]"],
 .compact-ui [class~="h-[calc(100vh-7rem)]"],
@@ -432,6 +441,29 @@
 .mobile-frame [class~="lg:grid-cols-2"],
 .mobile-frame [class~="xl:grid-cols-2"] {
   grid-template-columns: minmax(0, 1fr) !important;
+}
+
+/* ── Master/detail (Medical Records) ────────────────────────
+   A 12-column grid with col-spans, which the generic rules above
+   don't cover — without this the worker picker and the record
+   panel stay side by side inside the 420px frame and both get
+   squeezed to unreadable columns. Stack them: picker on top,
+   records beneath.
+   ─────────────────────────────────────────────────────────── */
+.mobile-frame .medical-view-root {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.mobile-frame .medical-worker-panel,
+.mobile-frame .medical-record-panel {
+  grid-column: auto / auto !important;
+  min-width: 0;
+}
+
+/* Keep the picker to about four rows so the records below it are
+   reachable without scrolling past a full-height list. */
+.mobile-frame .medical-worker-list {
+  height: 16.5rem !important;
 }
 
 /* md:grid-cols-2 stays at 2 columns (fine for mobile stat pairs) */

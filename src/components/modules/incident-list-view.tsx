@@ -22,6 +22,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { format } from 'date-fns'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { TableExportButton, type ExportColumn } from '@/components/ui/table-export-button'
+import DateRangeFilter, { localDay } from '@/components/shared/date-range-filter'
 
 // ---------- types ----------
 interface Incident {
@@ -88,6 +89,54 @@ function TableSkeleton() {
   )
 }
 
+/** The four summary tiles, which double as the status filter ('' = all). */
+const INCIDENT_CARDS: {
+  label: string
+  status: string
+  icon: typeof ShieldAlert
+  cardClass: string
+  iconClass: string
+  valueClass: string
+  outlineClass: string
+}[] = [
+  {
+    label: 'Total Incidents',
+    status: '',
+    icon: ShieldAlert,
+    cardClass: 'bg-teal-50 text-teal-700 border-teal-200',
+    iconClass: 'bg-teal-100 text-teal-600',
+    valueClass: '',
+    outlineClass: 'outline-teal-600',
+  },
+  {
+    label: 'Open',
+    status: 'Open',
+    icon: AlertTriangle,
+    cardClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    iconClass: 'bg-emerald-100 text-emerald-600',
+    valueClass: 'text-emerald-700',
+    outlineClass: 'outline-emerald-600',
+  },
+  {
+    label: 'Under Investigation',
+    status: 'UnderInvestigation',
+    icon: ShieldAlert,
+    cardClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    iconClass: 'bg-amber-100 text-amber-600',
+    valueClass: 'text-amber-700',
+    outlineClass: 'outline-amber-600',
+  },
+  {
+    label: 'Closed',
+    status: 'Closed',
+    icon: ShieldCheck,
+    cardClass: 'bg-slate-50 text-slate-700 border-slate-200',
+    iconClass: 'bg-slate-100 text-slate-600',
+    valueClass: 'text-slate-700',
+    outlineClass: 'outline-slate-600',
+  },
+]
+
 // ---------- main ----------
 export default function IncidentListView() {
   const navigateTo = useNavStore((s) => s.setPage)
@@ -100,16 +149,20 @@ export default function IncidentListView() {
   const [incidentType, setIncidentType] = useState('')
   const [severity, setSeverity] = useState('')
   const [status, setStatus] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 15
 
-  const hasActiveFilter = !!(search || incidentType || severity || status)
+  const hasActiveFilter = !!(search || incidentType || severity || status || dateFrom || dateTo)
   const clearFilters = () => {
     setSearch('')
     setDebouncedSearch('')
     setIncidentType('')
     setSeverity('')
     setStatus('')
+    setDateFrom('')
+    setDateTo('')
     setPage(1)
   }
 
@@ -120,29 +173,54 @@ export default function IncidentListView() {
     return () => clearTimeout(t)
   }
 
+  // Status is filtered client-side rather than in the query: the summary cards
+  // are the status dimension, so their counts have to describe the set *before*
+  // it is applied, or picking one zeroes out the other three.
   const queryParams = new URLSearchParams()
   if (debouncedSearch) queryParams.set('search', debouncedSearch)
   if (incidentType) queryParams.set('incidentType', incidentType)
   if (severity) queryParams.set('severity', severity)
-  if (status) queryParams.set('status', status)
   queryParams.set('limit', '100')
 
   const { data, isLoading } = useQuery<IncidentsResponse>({
-    queryKey: ['incidents', debouncedSearch, incidentType, severity, status],
+    queryKey: ['incidents', debouncedSearch, incidentType, severity],
     queryFn: () => fetch(`/api/incidents?${queryParams.toString()}`).then((r) => r.json()),
   })
 
   const incidents = data?.data ?? []
   const total = data?.total ?? 0
 
-  const { sorted, sortKey, sortDir, toggleSort } = useSort(incidents as (Incident & Record<string, unknown>)[])
+  // Date is applied before status so the summary counts still add up to the table.
+  const incidentsBeforeStatus = incidents.filter((i) => {
+    if (!dateFrom && !dateTo) return true
+    const day = localDay(i.date)
+    if (!day) return false
+    if (dateFrom && day < dateFrom) return false
+    if (dateTo && day > dateTo) return false
+    return true
+  })
+
+  const visibleIncidents = status
+    ? incidentsBeforeStatus.filter((i) => i.status === status)
+    : incidentsBeforeStatus
+
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(visibleIncidents as (Incident & Record<string, unknown>)[])
   const displayData = sorted
   const totalPages = Math.max(1, Math.ceil(displayData.length / PAGE_SIZE))
   const pagedData = displayData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const openCount = incidents.filter((i) => i.status === 'Open').length
-  const invCount = incidents.filter((i) => i.status === 'UnderInvestigation').length
-  const closedCount = incidents.filter((i) => i.status === 'Closed').length
+  const statusCounts: Record<string, number> = {
+    '': incidentsBeforeStatus.length,
+    Open: incidentsBeforeStatus.filter((i) => i.status === 'Open').length,
+    UnderInvestigation: incidentsBeforeStatus.filter((i) => i.status === 'UnderInvestigation').length,
+    Closed: incidentsBeforeStatus.filter((i) => i.status === 'Closed').length,
+  }
+
+  /** The summary cards double as the status filter; '' is "Total Incidents". */
+  const selectStatus = (next: string) => {
+    setStatus((prev) => (prev === next ? '' : next))
+    setPage(1)
+  }
 
   // ---------- export columns ----------
   const exportColumns: ExportColumn<Incident>[] = [
@@ -180,7 +258,7 @@ export default function IncidentListView() {
       {/* ====== Header ====== */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Incident Register</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">Incident Register</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLoading ? 'Loading...' : `${total} incident${total !== 1 ? 's' : ''} recorded`}
           </p>
@@ -214,59 +292,58 @@ export default function IncidentListView() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-          <Card className="bg-teal-50 text-teal-700 border-teal-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Total Incidents</p>
-                  <p className="text-xl font-bold tracking-tight mt-1">{total}</p>
-                </div>
-                <div className="rounded-xl p-2 shrink-0 bg-teal-100 text-teal-600">
-                  <ShieldAlert className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-emerald-50 text-emerald-700 border-emerald-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Open</p>
-                  <p className="text-xl font-bold tracking-tight mt-1 text-emerald-700">{openCount}</p>
-                </div>
-                <div className="rounded-xl p-2 shrink-0 bg-emerald-100 text-emerald-600">
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-amber-50 text-amber-700 border-amber-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Under Investigation</p>
-                  <p className="text-xl font-bold tracking-tight mt-1 text-amber-700">{invCount}</p>
-                </div>
-                <div className="rounded-xl p-2 shrink-0 bg-amber-100 text-amber-600">
-                  <ShieldAlert className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-slate-50 text-slate-700 border-slate-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Closed</p>
-                  <p className="text-xl font-bold tracking-tight mt-1 text-slate-700">{closedCount}</p>
-                </div>
-                <div className="rounded-xl p-2 shrink-0 bg-slate-100 text-slate-600">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {INCIDENT_CARDS.map((card) => {
+            const Icon = card.icon
+            const isActive = status === card.status
+            return (
+              <button
+                key={card.label}
+                type="button"
+                onClick={() => selectStatus(card.status)}
+                aria-pressed={isActive}
+                title={`Show ${card.label.toLowerCase()}`}
+                className="text-left rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0d9488]"
+              >
+                <Card
+                  className={[
+                    card.cardClass,
+                    'cursor-pointer transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]',
+                    // Drawn inside the card — an outward ring is clipped by the
+                    // page's overflow-hidden and crowds the sidebar.
+                    isActive ? `outline-2 -outline-offset-2 shadow-lg ${card.outlineClass}` : '',
+                  ].join(' ')}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 truncate">
+                          {card.label}
+                        </p>
+                        <p className={`text-xl font-bold tracking-tight mt-1 ${card.valueClass}`}>
+                          {statusCounts[card.status] ?? 0}
+                        </p>
+                      </div>
+                      <div className={`rounded-xl p-2 shrink-0 ${card.iconClass}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            )
+          })}
         </div>
+      )}
+
+      {/* Active-card context line */}
+      {!isLoading && (
+        <p className="text-xs text-muted-foreground shrink-0 -mt-1">
+          Showing{' '}
+          <span className="font-medium text-foreground">
+            {INCIDENT_CARDS.find((c) => c.status === status)?.label ?? 'Total Incidents'}
+          </span>{' '}
+          — {visibleIncidents.length} incident{visibleIncidents.length !== 1 ? 's' : ''}
+        </p>
       )}
 
       {/* ====== Filters ====== */}
@@ -314,6 +391,13 @@ export default function IncidentListView() {
                 <SelectItem value="Closed">Closed</SelectItem>
               </SelectContent>
             </Select>
+            {/* Incident date — one calendar, presets plus a custom range */}
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onChange={(f, t) => { setDateFrom(f); setDateTo(t); setPage(1) }}
+              className="w-full sm:w-56"
+            />
             {hasActiveFilter && (
               <Button
                 variant="outline"

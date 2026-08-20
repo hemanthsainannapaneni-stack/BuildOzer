@@ -1250,7 +1250,7 @@ export default function SettingsView() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <h1 className="page-title text-2xl font-bold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage users, access, workflows, and system configuration.</p>
       </div>
 

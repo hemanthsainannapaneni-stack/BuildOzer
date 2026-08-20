@@ -437,7 +437,9 @@ export default function WorkerFormView() {
           <span className="sr-only">Back</span>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          {/* On a phone the top bar already reads "Register Worker"; only the
+              edit title says something it does not, so only that one stays. */}
+          <h1 className={`text-2xl font-bold tracking-tight${isEdit ? '' : ' page-title'}`}>
             {isEdit ? 'Edit Worker' : 'Register New Worker'}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">

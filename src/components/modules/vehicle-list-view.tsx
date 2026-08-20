@@ -77,6 +77,54 @@ const vehicleExportColumns: ExportColumn<Vehicle>[] = [
   { key: 'documents', header: 'Docs', accessor: (v) => v._count?.documents ?? 0 },
 ]
 
+/** The four summary tiles, which double as the condition filter ('' = all). */
+const VEHICLE_CARDS: {
+  label: string
+  condition: string
+  icon: typeof Truck
+  cardClass: string
+  iconClass: string
+  valueClass: string
+  outlineClass: string
+}[] = [
+  {
+    label: 'Total',
+    condition: '',
+    icon: Truck,
+    cardClass: 'bg-teal-50 text-teal-700 border-teal-200',
+    iconClass: 'bg-teal-100 text-teal-600',
+    valueClass: '',
+    outlineClass: 'outline-teal-600',
+  },
+  {
+    label: 'Fit',
+    condition: 'Fit',
+    icon: CheckCircle2,
+    cardClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    iconClass: 'bg-emerald-100 text-emerald-600',
+    valueClass: 'text-emerald-700',
+    outlineClass: 'outline-emerald-600',
+  },
+  {
+    label: 'Needs Repair',
+    condition: 'NeedsRepair',
+    icon: Wrench,
+    cardClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    iconClass: 'bg-amber-100 text-amber-600',
+    valueClass: 'text-amber-700',
+    outlineClass: 'outline-amber-600',
+  },
+  {
+    label: 'Grounded',
+    condition: 'Grounded',
+    icon: CircleSlash,
+    cardClass: 'bg-rose-50 text-rose-700 border-rose-200',
+    iconClass: 'bg-rose-100 text-rose-600',
+    valueClass: 'text-rose-700',
+    outlineClass: 'outline-rose-600',
+  },
+]
+
 // ---------- skeleton ----------
 function TableSkeleton() {
   return (
@@ -146,14 +194,16 @@ export default function VehicleListView() {
     return () => clearTimeout(t)
   }
 
+  // Condition is filtered client-side rather than in the query: the summary
+  // cards are the condition dimension, so their counts have to describe the
+  // set *before* it is applied, or picking one zeroes out the other three.
   const queryParams = new URLSearchParams()
   if (debouncedSearch) queryParams.set('search', debouncedSearch)
   if (vehicleType) queryParams.set('vehicleType', vehicleType)
-  if (condition) queryParams.set('condition', condition)
   queryParams.set('limit', '100')
 
   const { data, isLoading } = useQuery<VehiclesResponse>({
-    queryKey: ['vehicles', debouncedSearch, vehicleType, condition],
+    queryKey: ['vehicles', debouncedSearch, vehicleType],
     queryFn: () => fetch(`/api/vehicles?${queryParams.toString()}`).then((r) => r.json()),
   })
 
@@ -177,14 +227,27 @@ export default function VehicleListView() {
   const vehicles = data?.data ?? []
   const total = data?.total ?? 0
 
-  const { sorted, sortKey, sortDir, toggleSort } = useSort(vehicles as (Vehicle & Record<string, unknown>)[])
+  const visibleVehicles = condition
+    ? vehicles.filter((v) => v.condition === condition)
+    : vehicles
+
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(visibleVehicles as (Vehicle & Record<string, unknown>)[])
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const pagedData = sorted.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE)
 
-  const fitCount = vehicles.filter((v) => v.condition === 'Fit').length
-  const repairCount = vehicles.filter((v) => v.condition === 'NeedsRepair').length
-  const groundedCount = vehicles.filter((v) => v.condition === 'Grounded').length
+  const conditionCounts: Record<string, number> = {
+    '': vehicles.length,
+    Fit: vehicles.filter((v) => v.condition === 'Fit').length,
+    NeedsRepair: vehicles.filter((v) => v.condition === 'NeedsRepair').length,
+    Grounded: vehicles.filter((v) => v.condition === 'Grounded').length,
+  }
+
+  /** The summary cards double as the condition filter; '' is "Total". */
+  const selectCondition = (next: string) => {
+    setCondition((prev) => (prev === next ? '' : next))
+    setPageNum(1)
+  }
 
   const handleAdd = () => {
     if (!newVehicleNumber || !newVehicleType) {
@@ -213,7 +276,7 @@ export default function VehicleListView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Machinery & Vehicles</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">Machinery & Vehicles</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLoading ? 'Loading...' : `${total} item${total !== 1 ? 's' : ''} registered`}
           </p>
@@ -251,59 +314,58 @@ export default function VehicleListView() {
         </div>
       ) : (
         <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card className="bg-teal-50 text-teal-700 border-teal-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Total</p>
-                  <p className="text-xl font-bold tracking-tight mt-1">{total}</p>
-                </div>
-                <div className="rounded-xl p-2 shrink-0 bg-teal-100 text-teal-600">
-                  <Truck className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-emerald-50 text-emerald-700 border-emerald-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Fit</p>
-                  <p className="text-xl font-bold tracking-tight mt-1 text-emerald-700">{fitCount}</p>
-                </div>
-                <div className="rounded-xl p-2 shrink-0 bg-emerald-100 text-emerald-600">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-amber-50 text-amber-700 border-amber-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Needs Repair</p>
-                  <p className="text-xl font-bold tracking-tight mt-1 text-amber-700">{repairCount}</p>
-                </div>
-                <div className="rounded-xl p-2 shrink-0 bg-amber-100 text-amber-600">
-                  <Wrench className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-rose-50 text-rose-700 border-rose-200 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Grounded</p>
-                  <p className="text-xl font-bold tracking-tight mt-1 text-rose-700">{groundedCount}</p>
-                </div>
-                <div className="rounded-xl p-2 shrink-0 bg-rose-100 text-rose-600">
-                  <CircleSlash className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {VEHICLE_CARDS.map((card) => {
+            const Icon = card.icon
+            const isActive = condition === card.condition
+            return (
+              <button
+                key={card.label}
+                type="button"
+                onClick={() => selectCondition(card.condition)}
+                aria-pressed={isActive}
+                title={`Show ${card.label.toLowerCase()}`}
+                className="text-left rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0d9488]"
+              >
+                <Card
+                  className={[
+                    card.cardClass,
+                    'cursor-pointer transition-all duration-300 ease-out hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 hover:-translate-y-1 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99]',
+                    // Drawn inside the card — an outward ring is clipped by the
+                    // page's overflow-hidden and crowds the sidebar.
+                    isActive ? `outline-2 -outline-offset-2 shadow-lg ${card.outlineClass}` : '',
+                  ].join(' ')}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 truncate">
+                          {card.label}
+                        </p>
+                        <p className={`text-xl font-bold tracking-tight mt-1 ${card.valueClass}`}>
+                          {conditionCounts[card.condition] ?? 0}
+                        </p>
+                      </div>
+                      <div className={`rounded-xl p-2 shrink-0 ${card.iconClass}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            )
+          })}
         </div>
+      )}
+
+      {/* Active-card context line */}
+      {!isLoading && (
+        <p className="text-xs text-muted-foreground shrink-0 -mt-1">
+          Showing{' '}
+          <span className="font-medium text-foreground">
+            {VEHICLE_CARDS.find((c) => c.condition === condition)?.label ?? 'Total'}
+          </span>{' '}
+          — {visibleVehicles.length} item{visibleVehicles.length !== 1 ? 's' : ''}
+        </p>
       )}
 
       {/* Filters */}

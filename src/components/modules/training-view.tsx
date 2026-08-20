@@ -52,7 +52,7 @@ import { toast } from 'sonner'
 import { format, parseISO, isPast, differenceInDays } from 'date-fns'
 import TrainingCertificate from '@/components/shared/training-certificate'
 import WorkerMultiSelect from '@/components/shared/worker-multi-select'
-import DateRangeFilter from '@/components/shared/date-range-filter'
+import DateRangeFilter, { localDay } from '@/components/shared/date-range-filter'
 import { useSort } from '@/lib/use-sort'
 import { SortableHeader } from '@/components/shared/sortable-header'
 import { TablePagination } from '@/components/shared/table-pagination'
@@ -149,15 +149,6 @@ function generateCertificateNumber(records: TrainingRecord[], currentIndex: numb
     if (records[i].dateConducted === currentDate) seq++
   }
   return `TRN-${dateStr}-${String(seq).padStart(4, '0')}`
-}
-
-/** Local calendar day (yyyy-MM-dd) of a stored timestamp — what the table shows. */
-function localDay(dateStr: string): string {
-  try {
-    return format(parseISO(dateStr), 'yyyy-MM-dd')
-  } catch {
-    return ''
-  }
 }
 
 function statusBadgeClass(status: string): string {
@@ -817,7 +808,7 @@ export default function TrainingView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Training & Certification</h1>
+          <h1 className="page-title text-2xl font-bold tracking-tight">Training & Certification</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLoading ? 'Loading...' : `${summary.total} training record${summary.total !== 1 ? 's' : ''} across all workers`}
           </p>
