@@ -82,31 +82,36 @@ export function TopBar() {
   const canGoBack = BACKABLE.has(activePage)
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1 border-b border-teal-100/60 bg-background px-2 no-print">
-      <div className="flex w-16 items-center">
-        {canGoBack ? (
-          <Button variant="ghost" size="icon" onClick={goBack} aria-label="Go back" className="h-8 w-8 rounded-lg">
-            <ChevronLeft className="h-4.5 w-4.5" />
-          </Button>
-        ) : mobileView ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMobileView(false)}
-            aria-label="Exit mobile view"
-            title="Exit mobile view"
-            className="h-8 w-8 rounded-lg text-slate-500"
-          >
-            <Monitor className="h-4 w-4" />
-          </Button>
-        ) : null}
-      </div>
+    /* px-3 matches the content padding below, so the title lines up with the
+       cards it heads rather than sitting on its own margin. */
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-teal-100/60 bg-background px-3 no-print">
+      {/* The leading button is pulled into the padding so its icon — not its
+          tap target — sits on the same left edge as the title beside it. */}
+      {canGoBack ? (
+        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Go back" className="-ml-1.5 h-9 w-9 shrink-0 rounded-lg">
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+      ) : mobileView ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setMobileView(false)}
+          aria-label="Exit mobile view"
+          title="Exit mobile view"
+          className="-ml-1.5 h-9 w-9 shrink-0 rounded-lg text-slate-500"
+        >
+          <Monitor className="h-4.5 w-4.5" />
+        </Button>
+      ) : null}
 
-      <h1 className="min-w-0 flex-1 truncate text-center text-base font-bold tracking-tight text-foreground">
+      {/* Left-aligned rather than centred: the actions on the right take about
+          100px, so a centred title would both sit off-centre and truncate the
+          longer module names. */}
+      <h1 className="min-w-0 flex-1 truncate text-xl font-bold tracking-tight text-foreground">
         {pageTitles[activePage] ?? 'Overview'}
       </h1>
 
-      <div className="flex w-16 items-center justify-end gap-0.5">
+      <div className="flex shrink-0 items-center gap-0.5">
         <Button
           variant="ghost"
           size="icon"
