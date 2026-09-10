@@ -157,20 +157,19 @@ export default function BulkImportDialog({ open, onOpenChange }: BulkImportDialo
     const currentAddress = String(row['Current Address'] || '').trim()
     const zone = String(row['Zone/Block'] || '').trim()
 
-    if (!fullName) errors.push('Full Name is required')
-
+    // A blank cell is fine now — only a cell that has been filled in has to
+    // make sense, matching what the form and the API accept.
     const dob = parseDate(dobRaw)
-    if (!dob) errors.push('Invalid Date of Birth (use DD/MM/YYYY)')
-    else {
+    if (dobRaw && !dob) errors.push('Invalid Date of Birth (use DD/MM/YYYY)')
+    else if (dob) {
       const age = calculateAge(dob)
       if (age !== null && (age < 18 || age > 55)) errors.push(`Age ${age} is not between 18-55`)
     }
 
-    if (!gender || !VALID_GENDERS.includes(gender)) errors.push('Gender must be Male/Female/Other')
-    if (!bloodGroup || !VALID_BLOOD_GROUPS.includes(bloodGroup)) errors.push('Invalid Blood Group')
-    if (!aadhaarNumber || !/^\d{12}$/.test(aadhaarNumber)) errors.push('Aadhaar must be 12 digits')
-    if (!permanentAddress) errors.push('Permanent Address is required')
-    if (!qualification || !VALID_QUALIFICATIONS.includes(qualification)) errors.push('Invalid Qualification')
+    if (gender && !VALID_GENDERS.includes(gender)) errors.push('Gender must be Male/Female/Other')
+    if (bloodGroup && !VALID_BLOOD_GROUPS.includes(bloodGroup)) errors.push('Invalid Blood Group')
+    if (aadhaarNumber && !/^\d{12}$/.test(aadhaarNumber)) errors.push('Aadhaar must be 12 digits')
+    if (qualification && !VALID_QUALIFICATIONS.includes(qualification)) errors.push('Invalid Qualification')
 
     return {
       _row: idx,
@@ -282,10 +281,6 @@ export default function BulkImportDialog({ open, onOpenChange }: BulkImportDialo
   })
 
   const handleImport = () => {
-    if (!contractorId) {
-      toast.error('Please select a contractor')
-      return
-    }
     const validRows = parsedRows.filter((r) => r.valid)
     if (validRows.length === 0) {
       toast.error('No valid rows to import')
@@ -323,7 +318,7 @@ export default function BulkImportDialog({ open, onOpenChange }: BulkImportDialo
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Contractor *</label>
+                  <label className="text-sm font-medium">Contractor</label>
                   <select
                     className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                     value={contractorId}
@@ -460,7 +455,7 @@ export default function BulkImportDialog({ open, onOpenChange }: BulkImportDialo
                 <Button
                   className="bg-[#0d9488] hover:bg-[#0f766e] text-white"
                   onClick={handleImport}
-                  disabled={!contractorId || validCount === 0}
+                  disabled={validCount === 0}
                 >
                   Import {validCount} Worker{validCount !== 1 ? 's' : ''}
                 </Button>

@@ -21,17 +21,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, code, gstNumber, address, phone } = body
 
-    if (!name || !code) {
-      return NextResponse.json({ error: 'Name and code are required' }, { status: 400 })
-    }
-
-    const existing = await db.contractor.findUnique({ where: { code } })
-    if (existing) {
-      return NextResponse.json({ error: 'Contractor with this code already exists' }, { status: 409 })
+    if (code) {
+      const existing = await db.contractor.findUnique({ where: { code } })
+      if (existing) {
+        return NextResponse.json({ error: 'Contractor with this code already exists' }, { status: 409 })
+      }
     }
 
     const contractor = await db.contractor.create({
-      data: { name, code, gstNumber, address, phone },
+      data: { name: name || '', code: code || null, gstNumber, address, phone },
     })
     return NextResponse.json(contractor, { status: 201 })
   } catch (error) {

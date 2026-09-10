@@ -348,8 +348,8 @@ function AddMedicalDialog({ workerId, workerName, open, onOpenChange }: {
           {/* Basic Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Examination Date *</Label>
-              <Input type="date" {...register('examinationDate', { required: true })} className="mt-1" />
+              <Label>Examination Date</Label>
+              <Input type="date" {...register('examinationDate')} className="mt-1" />
               {errors.examinationDate && <p className="text-xs text-destructive mt-1">Required</p>}
             </div>
             <div>
@@ -679,7 +679,7 @@ export default function MedicalView() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{w.fullName}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {w.employeeNumber} · {w.designation.name}
+                          {w.employeeNumber} · {w.designation?.name ?? '—'}
                         </p>
                       </div>
                       <ChevronRight className={cn(
@@ -717,7 +717,7 @@ export default function MedicalView() {
                       <div>
                         <h3 className="font-semibold">{selectedWorker.fullName}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {selectedWorker.employeeNumber} · {selectedWorker.designation.name}
+                          {selectedWorker.employeeNumber} · {selectedWorker.designation?.name ?? '—'}
                           {selectedWorker.site ? ` · ${selectedWorker.site.name}` : ''}
                         </p>
                       </div>

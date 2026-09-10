@@ -54,10 +54,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    if (!body.incidentType || !body.date || !body.description) {
-      return NextResponse.json({ error: 'incidentType, date, and description are required' }, { status: 400 })
-    }
-
     // Auto-generate incident number: INC-YYYY-XXX
     const year = new Date().getFullYear()
     const prefix = `INC-${year}-`
@@ -70,7 +66,7 @@ export async function POST(req: NextRequest) {
       data: {
         incidentNumber,
         incidentType: body.incidentType,
-        date: new Date(body.date),
+        date: body.date ? new Date(body.date) : null,
         time: body.time || null,
         locationOnSite: body.locationOnSite || null,
         description: body.description,

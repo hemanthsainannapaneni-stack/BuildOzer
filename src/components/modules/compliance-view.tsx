@@ -827,7 +827,7 @@ function UpdateStatusDialog({
         <div className="space-y-4 pt-2">
           {/* Status */}
           <div className="space-y-1.5">
-            <Label className="text-sm">Availability Status *</Label>
+            <Label className="text-sm">Availability Status</Label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>

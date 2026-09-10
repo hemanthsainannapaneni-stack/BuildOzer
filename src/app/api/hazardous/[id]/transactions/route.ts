@@ -15,11 +15,7 @@ export async function POST(
       return NextResponse.json({ error: 'Hazardous material not found' }, { status: 404 })
     }
 
-    if (!body.transactionType || body.quantity === undefined) {
-      return NextResponse.json({ error: 'transactionType (In/Out) and quantity are required' }, { status: 400 })
-    }
-
-    if (!['In', 'Out'].includes(body.transactionType)) {
+    if (body.transactionType && !['In', 'Out'].includes(body.transactionType)) {
       return NextResponse.json({ error: 'transactionType must be In or Out' }, { status: 400 })
     }
 
@@ -27,17 +23,20 @@ export async function POST(
       return NextResponse.json({ error: 'quantity must be positive' }, { status: 400 })
     }
 
+    // A blank quantity moves no stock, so the balance simply stays put.
+    const qty = Number.isFinite(body.quantity) ? body.quantity : 0
+
     let newBalance = material.quantityCurrent
     if (body.transactionType === 'In') {
-      newBalance += body.quantity
+      newBalance += qty
     } else {
-      newBalance -= body.quantity
+      newBalance -= qty
       if (newBalance < 0) {
         return NextResponse.json({ error: 'Insufficient stock for this transaction' }, { status: 400 })
       }
     }
 
-    if (newBalance > material.quantityMaxPermissible) {
+    if (material.quantityMaxPermissible !== null && newBalance > material.quantityMaxPermissible) {
       return NextResponse.json(
         { error: 'Transaction would exceed maximum permissible quantity' },
         { status: 400 },
@@ -49,7 +48,7 @@ export async function POST(
         data: {
           materialId: id,
           transactionType: body.transactionType,
-          quantity: body.quantity,
+          quantity: Number.isFinite(body.quantity) ? body.quantity : null,
           runningBalance: newBalance,
           date: body.date ? new Date(body.date) : new Date(),
           remarks: body.remarks || null,

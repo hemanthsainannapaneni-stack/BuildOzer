@@ -442,7 +442,7 @@ export default function WorkerListView() {
                           {w.employeeNumber}
                         </TableCell>
                         <TableCell className="font-medium">{w.fullName}</TableCell>
-                        <TableCell>{w.designation.name}</TableCell>
+                        <TableCell>{w.designation?.name ?? '—'}</TableCell>
                         <TableCell>{w.gender}</TableCell>
                         <TableCell>{w.bloodGroup}</TableCell>
                         <TableCell className="font-mono text-sm text-muted-foreground">
@@ -593,7 +593,7 @@ export default function WorkerListView() {
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-                      <span>{w.designation.name}</span>
+                      <span>{w.designation?.name ?? '—'}</span>
                       <span>{w.gender}</span>
                       <span>{w.bloodGroup}</span>
                       <span>{w.site?.name ?? 'No Site'}</span>

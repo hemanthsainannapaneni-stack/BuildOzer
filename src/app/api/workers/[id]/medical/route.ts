@@ -40,7 +40,7 @@ export async function POST(
     const record = await db.medicalRecord.create({
       data: {
         workerId: id,
-        examinationDate: new Date(body.examinationDate),
+        examinationDate: body.examinationDate ? new Date(body.examinationDate) : null,
         examinationType: body.examinationType || 'PreEmployment',
         examiningDoctor: body.examiningDoctor || null,
         examiningFacility: body.examiningFacility || null,

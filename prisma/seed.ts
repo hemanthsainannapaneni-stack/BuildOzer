@@ -54,10 +54,10 @@ async function seed() {
       const campName = `${contractor.code} Camp ${site.name}`
 
       await db.labourCamp.upsert({
-        where: { id: `camp-${contractor.code.toLowerCase()}-${site.code.toLowerCase()}` },
+        where: { id: `camp-${contractor.code?.toLowerCase()}-${site.code?.toLowerCase()}` },
         update: {},
         create: {
-          id: `camp-${contractor.code.toLowerCase()}-${site.code.toLowerCase()}`,
+          id: `camp-${contractor.code?.toLowerCase()}-${site.code?.toLowerCase()}`,
           name: campName,
           contractorId: contractor.id,
           siteId: site.id,
@@ -100,7 +100,7 @@ async function seed() {
 
   // PMC users (one per site)
   for (const site of allSites) {
-    const username = `pmc-${site.code.toLowerCase()}`
+    const username = `pmc-${site.code?.toLowerCase()}`
     await db.systemUser.upsert({
       where: { username },
       update: { role: 'PMC', siteId: site.id },

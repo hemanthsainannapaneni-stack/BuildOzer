@@ -33,17 +33,13 @@ export async function POST(
       return NextResponse.json({ error: 'Worker not found' }, { status: 404 })
     }
 
-    if (!body.trainingType || !body.trainingTitle || !body.dateConducted) {
-      return NextResponse.json({ error: 'trainingType, trainingTitle, and dateConducted are required' }, { status: 400 })
-    }
-
     const record = await db.trainingRecord.create({
       data: {
         workerId: id,
         trainingType: body.trainingType,
         trainingTitle: body.trainingTitle,
-        dateConducted: new Date(body.dateConducted),
-        durationHours: body.durationHours ?? 0,
+        dateConducted: body.dateConducted ? new Date(body.dateConducted) : null,
+        durationHours: body.durationHours ?? null,
         trainerName: body.trainerName || null,
         trainerCredentials: body.trainerCredentials || null,
         trainingAgency: body.trainingAgency || null,

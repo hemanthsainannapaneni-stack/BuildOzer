@@ -71,7 +71,7 @@ export default function WorkerMultiSelect({
       (w) =>
         w.fullName.toLowerCase().includes(q) ||
         w.employeeNumber.toLowerCase().includes(q) ||
-        w.designation.name.toLowerCase().includes(q),
+        (w.designation?.name ?? '').toLowerCase().includes(q),
     )
   }, [sorted, query])
 

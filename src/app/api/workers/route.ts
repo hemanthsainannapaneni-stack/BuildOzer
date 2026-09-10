@@ -87,60 +87,57 @@ export async function POST(req: NextRequest) {
       uanNumber, labourCampId,
     } = body
 
-    // Validate required fields
-    if (!fullName || !dateOfBirth || !gender || !aadhaarNumber || !permanentAddress || !bloodGroup || !qualification || !designationId || !contractorId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
+    // Nothing is required any more — every column behind this form is
+    // nullable. What survives are rules that only bite once a value has
+    // actually been entered.
+    const dob = dateOfBirth ? new Date(dateOfBirth) : null
+    const age = dob ? calculateAge(dob) : null
 
-    // Profile photo is mandatory when registering through the form
-    if (!profilePhotoPath) {
-      return NextResponse.json({ error: 'Profile photo is required', field: 'profilePhotoPath' }, { status: 400 })
-    }
-
-    // Validate age 18-55
-    const dob = new Date(dateOfBirth)
-    const age = calculateAge(dob)
-    if (age < 18 || age > 55) {
+    if (age !== null && (age < 18 || age > 55)) {
       return NextResponse.json({ error: 'Age must be between 18 and 55', field: 'dateOfBirth' }, { status: 400 })
     }
 
-    // Validate aadhaar 12-digit
-    if (!/^\d{12}$/.test(aadhaarNumber)) {
+    if (aadhaarNumber && !/^\d{12}$/.test(aadhaarNumber)) {
       return NextResponse.json({ error: 'Aadhaar must be exactly 12 digits', field: 'aadhaarNumber' }, { status: 400 })
     }
 
-    // Validate designation exists
-    const designation = await db.designation.findUnique({ where: { id: designationId } })
-    if (!designation) {
-      return NextResponse.json({ error: 'Designation not found' }, { status: 400 })
+    // A link that was supplied still has to point at something real; a link
+    // left blank is simply left blank.
+    if (designationId) {
+      const designation = await db.designation.findUnique({ where: { id: designationId } })
+      if (!designation) {
+        return NextResponse.json({ error: 'Designation not found' }, { status: 400 })
+      }
     }
 
-    // Validate contractor exists
-    const contractor = await db.contractor.findUnique({ where: { id: contractorId } })
-    if (!contractor) {
+    const contractor = contractorId
+      ? await db.contractor.findUnique({ where: { id: contractorId } })
+      : null
+    if (contractorId && !contractor) {
       return NextResponse.json({ error: 'Contractor not found' }, { status: 400 })
     }
 
-    // Auto-generate employee number
+    // Auto-generate employee number. Workers registered without a contractor
+    // fall back to a neutral prefix so the number is still unique and sortable.
     const count = await db.worker.count()
-    const employeeNumber = `${contractor.code}-WK-${String(count + 1).padStart(4, '0')}`
+    const employeeNumber = `${contractor?.code || 'GEN'}-WK-${String(count + 1).padStart(4, '0')}`
 
     const worker = await db.worker.create({
       data: {
         employeeNumber,
-        fullName,
+        fullName: fullName || '',
         dateOfBirth: dob,
         age,
-        gender,
-        aadhaarNumber,
+        gender: gender || '',
+        aadhaarNumber: aadhaarNumber || '',
         aadhaarScanPath: aadhaarScanPath || null,
-        permanentAddress,
+        permanentAddress: permanentAddress || '',
         currentAddress: currentAddress || null,
-        bloodGroup,
-        qualification,
+        bloodGroup: bloodGroup || '',
+        qualification: qualification || '',
         qualificationNote: qualificationNote || null,
-        designationId,
-        contractorId,
+        designationId: designationId || null,
+        contractorId: contractorId || null,
         siteId: siteId || null,
         zone: zone || null,
         reportingSupervisor: reportingSupervisor || null,
@@ -149,16 +146,16 @@ export async function POST(req: NextRequest) {
         labourCampId: labourCampId || null,
         emergencyContacts: {
           create: (emergencyContacts || []).map((ec: { name: string; relationship: string; phone: string; isPrimary?: boolean }) => ({
-            name: ec.name,
-            relationship: ec.relationship,
-            phone: ec.phone,
+            name: ec.name || '',
+            relationship: ec.relationship || '',
+            phone: ec.phone || '',
             isPrimary: ec.isPrimary || false,
           })),
         },
         nominees: {
           create: (nominees || []).map((n: { name: string; relationship: string; idNumber?: string; contactNumber?: string }) => ({
-            name: n.name,
-            relationship: n.relationship,
+            name: n.name || '',
+            relationship: n.relationship || '',
             idNumber: n.idNumber || null,
             contactNumber: n.contactNumber || null,
           })),
@@ -176,9 +173,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: worker }, { status: 201 })
   } catch (error: unknown) {
     console.error('POST /api/workers error:', error)
-    const msg = error instanceof Error && error.message.includes('Unique')
-      ? 'Employee number or aadhaar already exists'
-      : 'Failed to create worker'
+    // Match the constraint violation on its error code, not on the word
+    // "Unique" appearing in the message — Prisma's validation errors quote
+    // type names like `UncheckedCreateInput`, which matched that test and
+    // reported an unrelated failure as a duplicate.
+    const isDuplicate =
+      typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
+    const msg = isDuplicate ? 'Employee number or aadhaar already exists' : 'Failed to create worker'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

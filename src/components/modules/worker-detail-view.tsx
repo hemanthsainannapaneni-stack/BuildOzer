@@ -299,7 +299,7 @@ export default function WorkerDetailView() {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            {w.designation.name} &middot; {w.contractor.name}
+            {w.designation?.name ?? '—'} &middot; {w.contractor?.name ?? '—'}
             {w.site ? ` &middot; ${w.site.name}` : ''}
           </p>
         </div>
@@ -317,7 +317,7 @@ export default function WorkerDetailView() {
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
             <div className="md:pr-6">
               <InfoRow label="Date of Birth" value={formatDate(w.dateOfBirth)} />
-              <InfoRow label="Age" value={`${w.age} years`} />
+              <InfoRow label="Age" value={w.age != null ? `${w.age} years` : '—'} />
               <InfoRow label="Gender" value={w.gender} />
               <InfoRow label="Blood Group" value={w.bloodGroup} />
               <InfoRow

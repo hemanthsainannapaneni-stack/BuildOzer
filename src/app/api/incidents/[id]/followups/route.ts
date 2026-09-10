@@ -15,10 +15,6 @@ export async function POST(
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 })
     }
 
-    if (!body.action) {
-      return NextResponse.json({ error: 'action is required' }, { status: 400 })
-    }
-
     const followUp = await db.incidentFollowUp.create({
       data: {
         incidentId: id,

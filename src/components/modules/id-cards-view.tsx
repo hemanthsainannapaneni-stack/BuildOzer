@@ -206,8 +206,8 @@ function WorkersTab() {
                       <TableRow key={worker.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-medium">{worker.fullName}</TableCell>
                         <TableCell className="text-sm text-muted-foreground font-mono">{worker.employeeNumber}</TableCell>
-                        <TableCell className="text-sm">{worker.designation.name}</TableCell>
-                        <TableCell className="text-sm">{worker.contractor.name}</TableCell>
+                        <TableCell className="text-sm">{worker.designation?.name ?? '—'}</TableCell>
+                        <TableCell className="text-sm">{worker.contractor?.name ?? '—'}</TableCell>
                         <TableCell className="text-sm">{worker.site?.name || '—'}</TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -237,8 +237,8 @@ function WorkersTab() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      <span>{worker.designation.name}</span>
-                      <span>{worker.contractor.name}</span>
+                      <span>{worker.designation?.name ?? '—'}</span>
+                      <span>{worker.contractor?.name ?? '—'}</span>
                       <span>{worker.site?.name || '—'}</span>
                     </div>
                     <div className="pt-1">
@@ -273,8 +273,8 @@ function WorkersTab() {
             <div className="flex justify-center py-4">
               <UserIdCard
                 fullName={cardDialog.fullName}
-                role={cardDialog.designation.name}
-                contractorName={cardDialog.contractor.name}
+                role={cardDialog.designation?.name ?? '—'}
+                contractorName={cardDialog.contractor?.name ?? '—'}
                 employeeNumber={cardDialog.employeeNumber}
                 photo={cardDialog.profilePhotoPath}
                 bloodGroup={cardDialog.bloodGroup ?? undefined}

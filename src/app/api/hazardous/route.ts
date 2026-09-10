@@ -46,12 +46,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    if (!body.materialName || body.quantityMaxPermissible === undefined) {
-      return NextResponse.json({ error: 'materialName and quantityMaxPermissible are required' }, { status: 400 })
-    }
-
     // Validate quantityCurrent <= maxPermissible
-    if (body.quantityCurrent !== undefined && body.quantityCurrent > body.quantityMaxPermissible) {
+    if (body.quantityCurrent !== undefined && body.quantityMaxPermissible != null && body.quantityCurrent > body.quantityMaxPermissible) {
       return NextResponse.json(
         { error: 'Current quantity cannot exceed maximum permissible quantity' },
         { status: 400 },
@@ -67,7 +63,7 @@ export async function POST(req: NextRequest) {
         storageLicenseNumber: body.storageLicenseNumber || null,
         storageLicenseExpiry: body.storageLicenseExpiry ? new Date(body.storageLicenseExpiry) : null,
         quantityCurrent: body.quantityCurrent ?? 0,
-        quantityMaxPermissible: body.quantityMaxPermissible,
+        quantityMaxPermissible: Number.isFinite(body.quantityMaxPermissible) ? body.quantityMaxPermissible : null,
         unit: body.unit || 'KG',
         storageLocation: body.storageLocation || null,
         storageConditionCompliant: body.storageConditionCompliant ?? true,

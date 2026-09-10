@@ -48,10 +48,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    if (!body.category || !body.description) {
-      return NextResponse.json({ error: 'category and description are required' }, { status: 400 })
-    }
-
     // Auto-generate grievance number: GRV-YYYY-XXX
     const year = new Date().getFullYear()
     const prefix = `GRV-${year}-`

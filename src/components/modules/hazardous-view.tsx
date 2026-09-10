@@ -212,12 +212,12 @@ export default function HazardousView() {
 
   // Alert materials: current > 80% of max OR current > max
   const alertMaterials = useMemo(() =>
-    materials.filter((m) => m.quantityCurrent > 0.8 * m.quantityMaxPermissible),
+    materials.filter((m) => m.quantityMaxPermissible != null && m.quantityCurrent > 0.8 * m.quantityMaxPermissible),
     [materials]
   )
 
   const criticalMaterials = useMemo(() =>
-    materials.filter((m) => m.quantityCurrent > m.quantityMaxPermissible),
+    materials.filter((m) => m.quantityMaxPermissible != null && m.quantityCurrent > m.quantityMaxPermissible),
     [materials]
   )
 
@@ -276,16 +276,12 @@ export default function HazardousView() {
   }
 
   const handleCreate = () => {
-    if (!formName || !formMaxQty) {
-      toast.error('Material Name and Max Permissible Qty are required')
-      return
-    }
     createMutation.mutate({
       materialName: formName,
       category: formCategory,
       hazardClassification: formHazard || null,
       storageLicenseNumber: formLicenseNo || null,
-      quantityMaxPermissible: parseFloat(formMaxQty),
+      quantityMaxPermissible: formMaxQty ? parseFloat(formMaxQty) : null,
       unit: formUnit,
       storageLocation: formLocation || null,
       handlingResponsiblePerson: formHandler || null,
@@ -296,15 +292,12 @@ export default function HazardousView() {
   }
 
   const handleAddTxn = () => {
-    if (!txnMaterialId || !txnQty) {
-      toast.error('Quantity is required')
-      return
-    }
+    if (!txnMaterialId) return
     txnMutation.mutate({
       id: txnMaterialId,
       body: {
         transactionType: txnType,
-        quantity: parseFloat(txnQty),
+        quantity: txnQty ? parseFloat(txnQty) : null,
         remarks: txnRemarks || null,
       },
     })
@@ -434,7 +427,7 @@ export default function HazardousView() {
                         ? (m.quantityCurrent / m.quantityMaxPermissible) * 100
                         : 0
                       const isExpanded = expandedId === m.id
-                      const isCritical = m.quantityCurrent > m.quantityMaxPermissible
+                      const isCritical = m.quantityMaxPermissible != null && m.quantityCurrent > m.quantityMaxPermissible
 
                       return (
                         <React.Fragment key={m.id}>
@@ -464,7 +457,7 @@ export default function HazardousView() {
                             <TableCell>
                               <div className="space-y-1">
                                 <span className={`text-sm font-medium ${getProgressLabel(pct)}`}>
-                                  {m.quantityCurrent} / {m.quantityMaxPermissible}
+                                  {m.quantityCurrent} / {m.quantityMaxPermissible ?? '—'}
                                 </span>
                               </div>
                             </TableCell>
@@ -525,7 +518,7 @@ export default function HazardousView() {
                 ? (m.quantityCurrent / m.quantityMaxPermissible) * 100
                 : 0
               const isExpanded = expandedId === m.id
-              const isCritical = m.quantityCurrent > m.quantityMaxPermissible
+              const isCritical = m.quantityMaxPermissible != null && m.quantityCurrent > m.quantityMaxPermissible
 
               return (
                 <Card key={m.id} className={`overflow-hidden ${isCritical ? 'border-red-200' : ''}`}>
@@ -557,7 +550,7 @@ export default function HazardousView() {
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
                           <span className={`font-medium ${getProgressLabel(pct)}`}>
-                            {m.quantityCurrent} / {m.quantityMaxPermissible} {m.unit}
+                            {m.quantityCurrent} / {m.quantityMaxPermissible ?? '—'} {m.unit}
                           </span>
                           <span className={`text-xs ${getProgressLabel(pct)}`}>{pct.toFixed(0)}%</span>
                         </div>
@@ -602,7 +595,7 @@ export default function HazardousView() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label>Material Name *</Label>
+              <Label>Material Name</Label>
               <Input className="mt-1" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Acetone, Sulphuric Acid" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -637,7 +630,7 @@ export default function HazardousView() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Max Permissible Qty *</Label>
+                <Label>Max Permissible Qty</Label>
                 <Input type="number" className="mt-1" value={formMaxQty} onChange={(e) => setFormMaxQty(e.target.value)} placeholder="e.g. 500" min="1" />
               </div>
               <div>
@@ -690,7 +683,7 @@ export default function HazardousView() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label>Type *</Label>
+              <Label>Type</Label>
               <div className="flex gap-3 mt-2">
                 <Button
                   type="button"
@@ -713,7 +706,7 @@ export default function HazardousView() {
               </div>
             </div>
             <div>
-              <Label>Quantity *</Label>
+              <Label>Quantity</Label>
               <Input type="number" className="mt-1" value={txnQty} onChange={(e) => setTxnQty(e.target.value)} placeholder="Enter quantity" min="1" />
             </div>
             <div>

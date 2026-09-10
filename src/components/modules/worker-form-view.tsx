@@ -53,43 +53,45 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
 const QUALIFICATIONS = ['Below 10th', '10th', '12th', 'ITI', 'Diploma', 'Graduate', 'Other'] as const
 
 // ---------- schema ----------
+// Nothing here is mandatory: a field left blank simply submits blank, all
+// the way down to the database. The only rules left apply *once something
+// has actually been typed* — a date of birth, if given, still has to be a
+// working age, and an Aadhaar number, if given, still has to be 12 digits.
 const emergencyContactSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  relationship: z.string().min(1, 'Relationship is required'),
-  phone: z.string().min(1, 'Phone is required'),
+  name: z.string(),
+  relationship: z.string(),
+  phone: z.string(),
   isPrimary: z.boolean().default(false),
 })
 
 const nomineeSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  relationship: z.string().min(1, 'Relationship is required'),
+  name: z.string(),
+  relationship: z.string(),
   idNumber: z.string().optional(),
   contactNumber: z.string().optional(),
 })
 
 const workerFormSchema = z.object({
-  profilePhotoPath: z.string().min(1, 'Profile photo is required'),
-  fullName: z.string().min(1, 'Full name is required'),
-  dateOfBirth: z.string().min(1, 'Date of birth is required'),
-  gender: z.string().min(1, 'Gender is required'),
-  bloodGroup: z.string().min(1, 'Blood group is required'),
-  qualification: z.string().min(1, 'Qualification is required'),
+  profilePhotoPath: z.string(),
+  fullName: z.string(),
+  dateOfBirth: z.string(),
+  gender: z.string(),
+  bloodGroup: z.string(),
+  qualification: z.string(),
   qualificationNote: z.string().optional(),
   aadhaarNumber: z
     .string()
-    .min(1, 'Aadhaar number is required')
-    .regex(/^\d{12}$/, 'Must be exactly 12 digits'),
-  permanentAddress: z.string().min(1, 'Permanent address is required'),
+    .refine((v) => !v || /^\d{12}$/.test(v), 'Must be exactly 12 digits'),
+  permanentAddress: z.string(),
   currentAddress: z.string().optional(),
-  contractorId: z.string().min(1, 'Contractor is required'),
+  contractorId: z.string(),
   siteId: z.string().optional(),
-  designationId: z.string().min(1, 'Designation is required'),
+  labourCampId: z.string().optional(),
+  designationId: z.string(),
   zone: z.string().optional(),
   reportingSupervisor: z.string().optional(),
   uanNumber: z.string().optional(),
-  emergencyContacts: z
-    .array(emergencyContactSchema)
-    .min(1, 'At least one emergency contact is required'),
+  emergencyContacts: z.array(emergencyContactSchema),
   nominees: z.array(nomineeSchema).optional(),
 }).refine(
   (data) => {
@@ -120,6 +122,11 @@ interface Site {
   id: string
   name: string
 }
+interface LabourCamp {
+  id: string
+  name: string
+  site?: { name: string } | null
+}
 interface WorkerData {
   id: string
   profilePhotoPath: string | null
@@ -138,6 +145,7 @@ interface WorkerData {
   zone: string | null
   reportingSupervisor: string | null
   uanNumber: string | null
+  labourCampId: string | null
   emergencyContacts: { id: string; name: string; relationship: string; phone: string; isPrimary: boolean }[]
   nominees: { id: string; name: string; relationship: string; idNumber: string | null; contactNumber: string | null }[]
 }
@@ -220,6 +228,7 @@ export default function WorkerFormView() {
       currentAddress: '',
       contractorId: '',
       siteId: '',
+      labourCampId: '',
       designationId: '',
       zone: '',
       reportingSupervisor: '',
@@ -255,6 +264,16 @@ export default function WorkerFormView() {
     queryFn: () => fetch('/api/sites').then((r) => r.json()),
   })
 
+  // Camps belong to a contractor, so the list only makes sense once one is
+  // picked — and it is re-fetched whenever that choice changes.
+  const selectedContractorId = form.watch('contractorId')
+  const { data: labourCamps } = useQuery<LabourCamp[]>({
+    queryKey: ['labour-camps', selectedContractorId],
+    queryFn: () =>
+      fetch(`/api/labour-camps?contractorId=${selectedContractorId}`).then((r) => r.json()),
+    enabled: !!selectedContractorId,
+  })
+
   // Fetch existing worker for edit
   const { data: existingWorker, isLoading: isLoadingWorker } = useQuery<{
     data: WorkerData
@@ -285,6 +304,7 @@ export default function WorkerFormView() {
         zone: w.zone ?? '',
         reportingSupervisor: w.reportingSupervisor ?? '',
         uanNumber: w.uanNumber ?? '',
+        labourCampId: w.labourCampId ?? '',
         emergencyContacts:
           w.emergencyContacts.length > 0
             ? w.emergencyContacts.map((ec) => ({
@@ -561,7 +581,7 @@ export default function WorkerFormView() {
                         name="profilePhotoPath"
                         render={({ field, fieldState }) => (
                           <FormItem className="sm:col-span-2 flex flex-col items-center gap-2 mb-2 space-y-0">
-                            <FormLabel>Profile Photo *</FormLabel>
+                            <FormLabel>Profile Photo</FormLabel>
                             <div
                               className={[
                                 'relative w-[72px] h-[72px] rounded-full border-2 border-dashed bg-muted/30 flex items-center justify-center cursor-pointer overflow-hidden group',
@@ -634,7 +654,7 @@ export default function WorkerFormView() {
                         name="fullName"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-2">
-                            <FormLabel>Full Name *</FormLabel>
+                            <FormLabel>Full Name</FormLabel>
                             <FormControl>
                               <Input placeholder="Enter full name" {...field} />
                             </FormControl>
@@ -648,7 +668,7 @@ export default function WorkerFormView() {
                         name="dateOfBirth"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Date of Birth *</FormLabel>
+                            <FormLabel>Date of Birth</FormLabel>
                             <FormControl>
                               <Input type="date" {...field} />
                             </FormControl>
@@ -662,7 +682,7 @@ export default function WorkerFormView() {
                         name="gender"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Gender *</FormLabel>
+                            <FormLabel>Gender</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger className="w-full">
@@ -685,7 +705,7 @@ export default function WorkerFormView() {
                         name="bloodGroup"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Blood Group *</FormLabel>
+                            <FormLabel>Blood Group</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger className="w-full">
@@ -708,7 +728,7 @@ export default function WorkerFormView() {
                         name="qualification"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Qualification *</FormLabel>
+                            <FormLabel>Qualification</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger className="w-full">
@@ -756,7 +776,7 @@ export default function WorkerFormView() {
                         name="aadhaarNumber"
                         render={({ field }) => (
                           <FormItem className="max-w-xs">
-                            <FormLabel>Aadhaar Number *</FormLabel>
+                            <FormLabel>Aadhaar Number</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="12-digit number"
@@ -778,7 +798,7 @@ export default function WorkerFormView() {
                         name="permanentAddress"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Permanent Address *</FormLabel>
+                            <FormLabel>Permanent Address</FormLabel>
                             <FormControl>
                               <Textarea
                                 placeholder="Full permanent address"
@@ -825,8 +845,16 @@ export default function WorkerFormView() {
                         name="contractorId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Contractor *</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormLabel>Contractor</FormLabel>
+                            <Select
+                              onValueChange={(v) => {
+                                field.onChange(v)
+                                // Camps are per-contractor, so a camp chosen
+                                // under the previous one no longer applies.
+                                form.setValue('labourCampId', '')
+                              }}
+                              defaultValue={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Select contractor" />
@@ -871,7 +899,7 @@ export default function WorkerFormView() {
                         name="designationId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Designation *</FormLabel>
+                            <FormLabel>Designation</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger className="w-full">
@@ -888,6 +916,43 @@ export default function WorkerFormView() {
                           </FormItem>
                         )}
                       />
+
+                      <FormField
+                          control={form.control}
+                          name="labourCampId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Labour Camp</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                disabled={!selectedContractorId}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue
+                                      placeholder={
+                                        !selectedContractorId
+                                          ? 'Select a contractor first'
+                                          : labourCamps && labourCamps.length === 0
+                                            ? 'No camps for this contractor'
+                                            : 'Select camp'
+                                      }
+                                    />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {labourCamps?.map((camp) => (
+                                    <SelectItem key={camp.id} value={camp.id}>
+                                      {camp.site?.name ? `${camp.name} · ${camp.site.name}` : camp.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
                       <FormField
                         control={form.control}
@@ -981,7 +1046,7 @@ export default function WorkerFormView() {
                               name={`emergencyContacts.${index}.name`}
                               render={({ field: f }) => (
                                 <FormItem>
-                                  <FormLabel>Name *</FormLabel>
+                                  <FormLabel>Name</FormLabel>
                                   <FormControl>
                                     <Input placeholder="Contact name" {...f} />
                                   </FormControl>
@@ -994,7 +1059,7 @@ export default function WorkerFormView() {
                               name={`emergencyContacts.${index}.relationship`}
                               render={({ field: f }) => (
                                 <FormItem>
-                                  <FormLabel>Relationship *</FormLabel>
+                                  <FormLabel>Relationship</FormLabel>
                                   <FormControl>
                                     <Input placeholder="e.g. Spouse, Father" {...f} />
                                   </FormControl>
@@ -1007,7 +1072,7 @@ export default function WorkerFormView() {
                               name={`emergencyContacts.${index}.phone`}
                               render={({ field: f }) => (
                                 <FormItem>
-                                  <FormLabel>Phone *</FormLabel>
+                                  <FormLabel>Phone</FormLabel>
                                   <FormControl>
                                     <Input placeholder="Phone number" {...f} />
                                   </FormControl>
@@ -1096,7 +1161,7 @@ export default function WorkerFormView() {
                                 name={`nominees.${index}.name`}
                                 render={({ field: f }) => (
                                   <FormItem>
-                                    <FormLabel>Name *</FormLabel>
+                                    <FormLabel>Name</FormLabel>
                                     <FormControl>
                                       <Input placeholder="Nominee name" {...f} />
                                     </FormControl>
@@ -1109,7 +1174,7 @@ export default function WorkerFormView() {
                                 name={`nominees.${index}.relationship`}
                                 render={({ field: f }) => (
                                   <FormItem>
-                                    <FormLabel>Relationship *</FormLabel>
+                                    <FormLabel>Relationship</FormLabel>
                                     <FormControl>
                                       <Input placeholder="e.g. Wife, Son" {...f} />
                                     </FormControl>

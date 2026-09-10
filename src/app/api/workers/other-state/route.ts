@@ -43,7 +43,7 @@ export async function GET() {
       dateOfBirth: w.dateOfBirth,
       gender: w.gender,
       permanentAddress: w.permanentAddress,
-      contractorName: w.contractor.name,
+      contractorName: w.contractor?.name ?? '—',
       siteName: w.site?.name ?? '—',
       emergencyPhone: w.emergencyContacts[0]?.phone ?? null,
     }))

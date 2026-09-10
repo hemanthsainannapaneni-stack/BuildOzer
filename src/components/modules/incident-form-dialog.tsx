@@ -233,10 +233,6 @@ function IncidentFormWizard({ onClose }: { onClose: () => void }) {
   // ---------- step validation ----------
   const validateStep = (step: number): boolean => {
     if (step === 0) {
-      if (!incidentType || !date || !description || !locationOnSite) {
-        toast.error('Please fill in all required fields (Type, Date, Location, Description)')
-        return false
-      }
     }
     return true
   }
@@ -407,7 +403,7 @@ function IncidentFormWizard({ onClose }: { onClose: () => void }) {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label>Incident Type *</Label>
+                    <Label>Incident Type</Label>
                     <Select value={incidentType} onValueChange={setIncidentType}>
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select type" />
@@ -421,7 +417,7 @@ function IncidentFormWizard({ onClose }: { onClose: () => void }) {
                     </Select>
                   </div>
                   <div>
-                    <Label>Date *</Label>
+                    <Label>Date</Label>
                     <Input type="date" className="mt-1" value={date} onChange={(e) => setDate(e.target.value)} />
                   </div>
                   <div>
@@ -429,12 +425,12 @@ function IncidentFormWizard({ onClose }: { onClose: () => void }) {
                     <Input className="mt-1" placeholder="e.g. 14:30" value={time} onChange={(e) => setTime(e.target.value)} />
                   </div>
                   <div>
-                    <Label>Location on Site *</Label>
+                    <Label>Location on Site</Label>
                     <Input className="mt-1" value={locationOnSite} onChange={(e) => setLocationOnSite(e.target.value)} placeholder="e.g. Block A, Floor 3" />
                   </div>
                 </div>
                 <div>
-                  <Label>Description *</Label>
+                  <Label>Description</Label>
                   <Textarea className="mt-1" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the incident in detail..." />
                 </div>
                 <div>

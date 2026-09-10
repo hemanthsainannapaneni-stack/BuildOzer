@@ -35,14 +35,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { fullName, username, role, contractorName } = body
 
-    if (!fullName || !username || !role) {
-      return NextResponse.json({ error: 'Missing required fields: fullName, username, role' }, { status: 400 })
-    }
-
     // Check for duplicate username
-    const existing = await db.systemUser.findUnique({ where: { username } })
-    if (existing) {
-      return NextResponse.json({ error: 'Username already exists' }, { status: 409 })
+    if (username) {
+      const existing = await db.systemUser.findUnique({ where: { username } })
+      if (existing) {
+        return NextResponse.json({ error: 'Username already exists' }, { status: 409 })
+      }
     }
 
     // Resolve contractorId from contractorName if not "All Contractors"
@@ -56,9 +54,9 @@ export async function POST(request: NextRequest) {
 
     const user = await db.systemUser.create({
       data: {
-        username,
-        fullName,
-        role,
+        username: username || null,
+        fullName: fullName || '',
+        role: role || '',
         contractorId,
         password: 'demo123', // default password for demo
       },

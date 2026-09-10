@@ -336,7 +336,7 @@ export default function IncidentDetailView() {
           {showFollowUpForm && (
             <div className="space-y-3 p-4 rounded-lg border bg-muted/30">
               <div>
-                <Label className="text-xs">Action *</Label>
+                <Label className="text-xs">Action</Label>
                 <Textarea className="mt-1" rows={2} value={followUpAction} onChange={(e) => setFollowUpAction(e.target.value)} placeholder="Describe the follow-up action..." />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -350,7 +350,7 @@ export default function IncidentDetailView() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" className="bg-[#0d9488] hover:bg-[#0f766e] text-white" disabled={!followUpAction || followUpMutation.isPending} onClick={() => followUpMutation.mutate({ action: followUpAction, responsiblePerson: followUpPerson, dueDate: followUpDue })}>
+                <Button size="sm" className="bg-[#0d9488] hover:bg-[#0f766e] text-white" disabled={followUpMutation.isPending} onClick={() => followUpMutation.mutate({ action: followUpAction, responsiblePerson: followUpPerson, dueDate: followUpDue })}>
                   {followUpMutation.isPending ? 'Saving...' : 'Save'}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setShowFollowUpForm(false)}>Cancel</Button>

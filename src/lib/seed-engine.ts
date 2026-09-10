@@ -342,7 +342,7 @@ export async function runDemoSeed(db: PrismaClient): Promise<Record<string, numb
   const camps: Array<{ id: string; contractorId: string; siteId: string; name: string }> = []
   for (const c of contractors) {
     for (const s of sites) {
-      const id = `camp-${c.code.toLowerCase()}-${s.code.toLowerCase()}`
+      const id = `camp-${c.code?.toLowerCase()}-${s.code?.toLowerCase()}`
       camps.push({ id, contractorId: c.id, siteId: s.id, name: `${c.name} Camp - ${s.name}` })
     }
   }
@@ -359,7 +359,7 @@ export async function runDemoSeed(db: PrismaClient): Promise<Record<string, numb
   const users = [
     { username: 'admin', password: 'admin123', fullName: 'System Administrator', role: 'ADMIN' },
     ...sites.map(s => ({
-      username: `pmc-${s.code.toLowerCase()}`,
+      username: `pmc-${s.code?.toLowerCase()}`,
       password: 'pmc123',
       fullName: `PMC Officer - ${s.name}`,
       role: 'PMC' as const,
@@ -921,7 +921,7 @@ export async function runDemoSeed(db: PrismaClient): Promise<Record<string, numb
   }
 
   // Create incidents and get IDs
-  const createdIncidents = []
+  const createdIncidents: Awaited<ReturnType<typeof db.incident.create>>[] = []
   for (const inc of incidents) {
     const created = await db.incident.create({ data: inc })
     createdIncidents.push(created)

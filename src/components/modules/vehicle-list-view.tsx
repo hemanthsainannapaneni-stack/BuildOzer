@@ -250,10 +250,6 @@ export default function VehicleListView() {
   }
 
   const handleAdd = () => {
-    if (!newVehicleNumber || !newVehicleType) {
-      toast.error('Vehicle number and type are required')
-      return
-    }
     addMutation.mutate({
       vehicleNumber: newVehicleNumber,
       vehicleType: newVehicleType,
@@ -518,11 +514,11 @@ export default function VehicleListView() {
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Vehicle / Equipment Number *</Label>
+                <Label className="text-xs">Vehicle / Equipment Number</Label>
                 <Input className="mt-1" placeholder="e.g. AP-28-BJ-1234" value={newVehicleNumber} onChange={(e) => setNewVehicleNumber(e.target.value)} />
               </div>
               <div>
-                <Label className="text-xs">Type *</Label>
+                <Label className="text-xs">Type</Label>
                 <Select value={newVehicleType} onValueChange={setNewVehicleType}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>

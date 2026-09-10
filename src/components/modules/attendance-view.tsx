@@ -457,7 +457,7 @@ function MarkAttendanceDialog({
                             <span className="text-xs font-mono text-muted-foreground">{w.employeeNumber}</span>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            <span className="text-sm text-muted-foreground">{w.designation.name}</span>
+                            <span className="text-sm text-muted-foreground">{w.designation?.name ?? '—'}</span>
                           </TableCell>
                           <TableCell className="text-right">
                             <Select
@@ -1147,7 +1147,7 @@ export default function AttendanceView() {
                       >
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm truncate">{w.fullName}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{w.employeeNumber} · {w.designation.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{w.employeeNumber} · {w.designation?.name ?? '—'}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className={cn('inline-flex items-center justify-center h-7 min-w-[28px] px-2 rounded-md text-xs font-semibold', badgeClass)}>

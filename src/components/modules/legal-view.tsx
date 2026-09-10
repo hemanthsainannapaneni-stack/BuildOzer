@@ -274,10 +274,6 @@ export default function LegalView() {
   }
 
   const handleSave = () => {
-    if (!formType) {
-      toast.error('Compliance Type is required')
-      return
-    }
 
     const body: Record<string, unknown> = {
       complianceType: formType,
@@ -680,7 +676,7 @@ export default function LegalView() {
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Compliance Type *</Label>
+                <Label>Compliance Type</Label>
                 <Select value={formType} onValueChange={setFormType}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>

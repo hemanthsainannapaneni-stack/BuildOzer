@@ -42,13 +42,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    if (!body.contractorId || !body.complianceType) {
-      return NextResponse.json({ error: 'contractorId and complianceType are required' }, { status: 400 })
-    }
-
     const record = await db.legalCompliance.create({
       data: {
-        contractorId: body.contractorId,
+        contractorId: body.contractorId || null,
         complianceType: body.complianceType,
         licenseNumber: body.licenseNumber || null,
         issuingAuthority: body.issuingAuthority || null,

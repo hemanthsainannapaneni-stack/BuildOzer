@@ -51,9 +51,6 @@ export async function POST(req: NextRequest) {
       siteId?: string | null
     }
 
-    if (!contractorId) {
-      return NextResponse.json({ error: 'Contractor ID is required' }, { status: 400 })
-    }
     if (!workers || !Array.isArray(workers) || workers.length === 0) {
       return NextResponse.json({ error: 'No workers provided' }, { status: 400 })
     }
@@ -62,8 +59,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate contractor
-    const contractor = await db.contractor.findUnique({ where: { id: contractorId } })
-    if (!contractor) {
+    const contractor = contractorId
+      ? await db.contractor.findUnique({ where: { id: contractorId } })
+      : null
+    if (contractorId && !contractor) {
       return NextResponse.json({ error: 'Contractor not found' }, { status: 400 })
     }
 
@@ -78,21 +77,21 @@ export async function POST(req: NextRequest) {
     // Get all designations for matching
     const allDesignations = await db.designation.findMany()
 
-    const code = contractorCode || contractor.code
+    const code = contractorCode || contractor?.code || 'GEN'
     const errors: { row: number; message: string }[] = []
     const toCreate: {
       employeeNumber: string
       fullName: string
-      dateOfBirth: Date
-      age: number
+      dateOfBirth: Date | null
+      age: number | null
       gender: string
       bloodGroup: string
       aadhaarNumber: string
       permanentAddress: string
       currentAddress: string | null
       qualification: string
-      designationId: string
-      contractorId: string
+      designationId: string | null
+      contractorId: string | null
       siteId: string | null
       zone: string | null
     }[] = []
@@ -105,17 +104,15 @@ export async function POST(req: NextRequest) {
       const rowNum = i + 1
       const rowErrors: string[] = []
 
-      if (!w.fullName?.trim()) rowErrors.push('Full Name is required')
-      if (!VALID_GENDERS.includes(w.gender)) rowErrors.push('Invalid gender')
-      if (!VALID_BLOOD_GROUPS.includes(w.bloodGroup)) rowErrors.push('Invalid blood group')
-      if (!w.aadhaarNumber || !/^\d{12}$/.test(w.aadhaarNumber.trim())) rowErrors.push('Aadhaar must be 12 digits')
-      if (!w.permanentAddress?.trim()) rowErrors.push('Permanent address is required')
-      if (!VALID_QUALIFICATIONS.includes(w.qualification)) rowErrors.push('Invalid qualification')
+      if (w.gender && !VALID_GENDERS.includes(w.gender)) rowErrors.push('Invalid gender')
+      if (w.bloodGroup && !VALID_BLOOD_GROUPS.includes(w.bloodGroup)) rowErrors.push('Invalid blood group')
+      if (w.aadhaarNumber?.trim() && !/^\d{12}$/.test(w.aadhaarNumber.trim())) rowErrors.push('Aadhaar must be 12 digits')
+      if (w.qualification && !VALID_QUALIFICATIONS.includes(w.qualification)) rowErrors.push('Invalid qualification')
 
       const dob = parseDate(w.dateOfBirth)
-      if (!dob) {
+      if (w.dateOfBirth?.trim() && !dob) {
         rowErrors.push('Invalid date of birth')
-      } else {
+      } else if (dob) {
         const age = calculateAge(dob)
         if (age < 18 || age > 55) rowErrors.push(`Age ${age} not between 18-55`)
       }
@@ -131,9 +128,6 @@ export async function POST(req: NextRequest) {
         } else {
           rowErrors.push(`Designation "${w.designationName}" not found`)
         }
-      }
-      if (!designationId) {
-        rowErrors.push('Designation is required')
       }
 
       // Check duplicate aadhaar in this batch
@@ -151,17 +145,17 @@ export async function POST(req: NextRequest) {
 
       toCreate.push({
         employeeNumber: empNum,
-        fullName: w.fullName.trim(),
-        dateOfBirth: dob!,
-        age: calculateAge(dob!),
-        gender: w.gender,
-        bloodGroup: w.bloodGroup,
-        aadhaarNumber: w.aadhaarNumber.trim(),
-        permanentAddress: w.permanentAddress.trim(),
+        fullName: w.fullName?.trim() || '',
+        dateOfBirth: dob,
+        age: dob ? calculateAge(dob) : null,
+        gender: w.gender || '',
+        bloodGroup: w.bloodGroup || '',
+        aadhaarNumber: w.aadhaarNumber?.trim() || '',
+        permanentAddress: w.permanentAddress?.trim() || '',
         currentAddress: w.currentAddress?.trim() || null,
-        qualification: w.qualification,
-        designationId: designationId!,
-        contractorId,
+        qualification: w.qualification || '',
+        designationId,
+        contractorId: contractorId || null,
         siteId: siteId || null,
         zone: w.zone?.trim() || null,
       })

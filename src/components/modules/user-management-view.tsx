@@ -177,8 +177,8 @@ function UserFormDialog({ open, onOpenChange, editingUser, contractors }: UserFo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!fullName.trim() || !username.trim()) {
-      toast.error('Please fill in all required fields')
+    if (!username.trim()) {
+      toast.error('Username is required')
       return
     }
     mutation.mutate({ fullName: fullName.trim(), username: username.trim(), role, contractorName })
@@ -195,7 +195,7 @@ function UserFormDialog({ open, onOpenChange, editingUser, contractors }: UserFo
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name *</Label>
+            <Label htmlFor="fullName">Full Name</Label>
             <Input
               id="fullName"
               placeholder="Enter full name"
@@ -204,7 +204,7 @@ function UserFormDialog({ open, onOpenChange, editingUser, contractors }: UserFo
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="username">Username *</Label>
+            <Label htmlFor="username">Username</Label>
             <Input
               id="username"
               placeholder="Enter username"
@@ -214,7 +214,7 @@ function UserFormDialog({ open, onOpenChange, editingUser, contractors }: UserFo
             />
           </div>
           <div className="space-y-2">
-            <Label>Role *</Label>
+            <Label>Role</Label>
             <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select role" />

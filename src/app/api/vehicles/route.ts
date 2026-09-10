@@ -50,10 +50,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    if (!body.vehicleNumber || !body.vehicleType) {
-      return NextResponse.json({ error: 'vehicleNumber and vehicleType are required' }, { status: 400 })
-    }
-
     const vehicle = await db.vehicle.create({
       data: {
         vehicleNumber: body.vehicleNumber,

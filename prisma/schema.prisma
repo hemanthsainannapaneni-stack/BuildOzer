@@ -12,7 +12,7 @@ datasource db {
 model Contractor {
   id        String   @id @default(cuid())
   name      String
-  code      String   @unique // e.g. "BSR"
+  code      String?  @unique // e.g. "BSR"
   gstNumber String?
   address   String?
   phone     String?
@@ -32,7 +32,7 @@ model Contractor {
 model Site {
   id          String   @id @default(cuid())
   name        String
-  code        String   @unique
+  code        String?  @unique
   address     String?
   contractorId String?
   contractor  Contractor? @relation(fields: [contractorId], references: [id])
@@ -67,8 +67,8 @@ model Worker {
   id                String   @id @default(cuid())
   employeeNumber    String   @unique // APCRDA-0001
   fullName          String
-  dateOfBirth       DateTime
-  age               Int      // computed, stored for easy querying
+  dateOfBirth       DateTime?
+  age               Int?     // computed, stored for easy querying
   gender            String   // Male, Female, Other
   aadhaarNumber     String   // 12-digit, masked in display
   aadhaarScanPath   String?
@@ -77,10 +77,10 @@ model Worker {
   bloodGroup        String   // A+, A-, B+, B-, AB+, AB-, O+, O-
   qualification     String   // Below 10th, 10th, 12th, ITI, Diploma, Graduate, Other
   qualificationNote String?
-  designationId     String
-  designation       Designation @relation(fields: [designationId], references: [id])
-  contractorId      String
-  contractor       Contractor @relation(fields: [contractorId], references: [id])
+  designationId     String?
+  designation       Designation? @relation(fields: [designationId], references: [id])
+  contractorId      String?
+  contractor       Contractor? @relation(fields: [contractorId], references: [id])
   siteId            String?
   site              Site?      @relation(fields: [siteId], references: [id])
   zone              String?   // Zone/Block on site
@@ -151,7 +151,7 @@ model MedicalRecord {
   id                      String    @id @default(cuid())
   workerId                String
   worker                  Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  examinationDate         DateTime
+  examinationDate         DateTime?
   examinationType         String    @default("PreEmployment") // PreEmployment, Periodic, Special
   examiningDoctor         String?
   examiningFacility       String?
@@ -179,8 +179,8 @@ model TrainingRecord {
   worker              Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
   trainingType        String    // JobSpecific, SafetyInduction, POSH, Special, MockDrill
   trainingTitle       String
-  dateConducted       DateTime
-  durationHours       Float
+  dateConducted       DateTime?
+  durationHours       Float?
   trainerName         String?
   trainerCredentials  String?
   trainingAgency      String?
@@ -267,7 +267,7 @@ model Incident {
   id                  String    @id @default(cuid())
   incidentNumber      String    @unique
   incidentType        String    // FireInjury, MinorInjury, MajorFatalInjury, Death
-  date                DateTime
+  date                DateTime?
   time                String?   // HH:mm format
   locationOnSite      String?
   description         String
@@ -398,7 +398,7 @@ model HazardousMaterial {
   storageLicenseNumber      String?
   storageLicenseExpiry      DateTime?
   quantityCurrent           Float    @default(0)
-  quantityMaxPermissible    Float
+  quantityMaxPermissible    Float?
   unit                      String   @default("KG")
   storageLocation           String?
   storageConditionCompliant Boolean  @default(true)
@@ -417,7 +417,7 @@ model MaterialTransaction {
   materialId         String
   material           HazardousMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
   transactionType    String   // In, Out
-  quantity           Float
+  quantity           Float?
   runningBalance     Float
   date               DateTime @default(now())
   remarks            String?
@@ -428,8 +428,8 @@ model MaterialTransaction {
 
 model LegalCompliance {
   id                  String   @id @default(cuid())
-  contractorId        String
-  contractor          Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contractorId        String?
+  contractor          Contractor? @relation(fields: [contractorId], references: [id], onDelete: Cascade)
   complianceType      String   // LabourLicense, BOCW, ContractLabour, StatutoryRegister
   licenseNumber       String?
   issuingAuthority    String?
@@ -498,7 +498,7 @@ model MedInfraItem {
 
 model SystemUser {
   id            String   @id @default(cuid())
-  username      String   @unique
+  username      String?  @unique
   password      String   // hashed in real app, plain for demo
   fullName      String
   role          String   // ADMIN, SAFETY_OFFICER, PMC, HR_COORDINATOR, LEGAL_ADVISOR
@@ -533,10 +533,10 @@ model AuditLog {
 model LabourCamp {
   id            String   @id @default(cuid())
   name          String
-  contractorId  String
-  contractor    Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
-  siteId        String
-  site          Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contractorId  String?
+  contractor    Contractor? @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  siteId        String?
+  site          Site?      @relation(fields: [siteId], references: [id], onDelete: Cascade)
   address       String?
   capacity      Int?
   currentOccupancy Int?   @default(0)

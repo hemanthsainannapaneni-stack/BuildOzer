@@ -24,17 +24,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, code, address, contractorId } = body
 
-    if (!name || !code) {
-      return NextResponse.json({ error: 'Name and code are required' }, { status: 400 })
-    }
-
-    const existing = await db.site.findUnique({ where: { code } })
-    if (existing) {
-      return NextResponse.json({ error: 'Site with this code already exists' }, { status: 409 })
+    if (code) {
+      const existing = await db.site.findUnique({ where: { code } })
+      if (existing) {
+        return NextResponse.json({ error: 'Site with this code already exists' }, { status: 409 })
+      }
     }
 
     const site = await db.site.create({
-      data: { name, code, address, contractorId },
+      data: { name: name || '', code: code || null, address, contractorId },
       include: {
         contractor: { select: { id: true, name: true, code: true } },
       },

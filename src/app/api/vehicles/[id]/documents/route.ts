@@ -33,10 +33,6 @@ export async function POST(
       return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
     }
 
-    if (!body.docType) {
-      return NextResponse.json({ error: 'docType is required' }, { status: 400 })
-    }
-
     const doc = await db.vehicleDocument.create({
       data: {
         vehicleId: id,

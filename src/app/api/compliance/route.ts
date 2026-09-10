@@ -141,8 +141,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Action: 'create' creates a new compliance item
-    if (!type || !siteId || !item) {
-      return NextResponse.json({ error: 'type, siteId, and item are required' }, { status: 400 })
+    // `type` picks the table to write and siteId is a non-null foreign key;
+    // the item name itself may be blank.
+    if (!type || !siteId) {
+      return NextResponse.json({ error: 'type and siteId are required' }, { status: 400 })
     }
 
     const site = await db.site.findUnique({ where: { id: siteId } })

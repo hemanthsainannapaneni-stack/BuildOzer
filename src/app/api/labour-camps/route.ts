@@ -40,12 +40,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, contractorId, siteId, address, capacity } = body
 
-    if (!name || !contractorId || !siteId) {
-      return NextResponse.json({ error: 'Name, contractorId, and siteId are required' }, { status: 400 })
-    }
-
     const camp = await db.labourCamp.create({
-      data: { name, contractorId, siteId, address, capacity },
+      data: { name: name || '', contractorId: contractorId || null, siteId: siteId || null, address, capacity },
       include: {
         contractor: { select: { id: true, name: true, code: true } },
         site: { select: { id: true, name: true, code: true } },

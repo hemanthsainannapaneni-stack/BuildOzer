@@ -71,11 +71,6 @@ export async function PUT(
       }
     }
 
-    // The profile photo is mandatory — allow replacing it, never clearing it
-    if ('profilePhotoPath' in body && !body.profilePhotoPath) {
-      return NextResponse.json({ error: 'Profile photo is required', field: 'profilePhotoPath' }, { status: 400 })
-    }
-
     const allowedFields = [
       'fullName', 'dateOfBirth', 'age', 'gender', 'aadhaarNumber', 'aadhaarScanPath',
       'permanentAddress', 'currentAddress', 'bloodGroup', 'qualification',
@@ -85,10 +80,16 @@ export async function PUT(
       'policeRecords',
     ]
 
+    // A cleared dropdown arrives as '', which a foreign key cannot hold — the
+    // link has to be unset with null. Same for a cleared date.
+    const NULLABLE_LINKS = new Set([
+      'designationId', 'contractorId', 'siteId', 'labourCampId', 'dateOfBirth', 'age',
+    ])
+
     const updateData: Record<string, unknown> = {}
     for (const key of allowedFields) {
       if (body[key] !== undefined) {
-        updateData[key] = body[key]
+        updateData[key] = NULLABLE_LINKS.has(key) && !body[key] ? null : body[key]
       }
     }
 

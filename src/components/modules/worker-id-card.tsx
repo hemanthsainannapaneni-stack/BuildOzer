@@ -220,7 +220,7 @@ export default function WorkerIdCard({
               Buildozer
             </div>
             <div style={{ fontSize: '9px', color: '#64748b', textAlign: 'right', maxWidth: '100px' }}>
-              {worker.contractor.name}
+              {worker.contractor?.name ?? '—'}
             </div>
           </div>
 
@@ -269,7 +269,7 @@ export default function WorkerIdCard({
                 {worker.fullName}
               </div>
               <div style={{ fontSize: '12px', color: '#475569', marginBottom: '2px' }}>
-                {worker.designation.name}
+                {worker.designation?.name ?? '—'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span
@@ -338,7 +338,7 @@ export default function WorkerIdCard({
               </div>
             )}
             <div style={{ fontSize: '8px', color: '#94a3b8', lineHeight: 1.4 }}>
-              This card is property of {worker.contractor.name}. Must be returned on separation.
+              This card is property of {worker.contractor?.name ?? 'the issuing contractor'}. Must be returned on separation.
             </div>
           </div>
         </div>

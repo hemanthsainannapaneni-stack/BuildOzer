@@ -578,7 +578,6 @@ function AddLocationDialog({
     e.preventDefault()
     if (!contractorId) { toast.error('Please select a contractor'); return }
     if (!siteId) { toast.error('Please select a project'); return }
-    if (!campName.trim()) { toast.error('Please enter or select a camp name'); return }
     mutation.mutate({
       name: campName.trim(),
       contractorId,
@@ -602,7 +601,7 @@ function AddLocationDialog({
           <form onSubmit={handleSubmit} className="space-y-4 py-1">
             {/* Contractor dropdown + add new */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Contractor *</Label>
+              <Label className="text-xs font-semibold">Contractor</Label>
               <div className="flex items-center gap-2">
                 <Select value={contractorId} onValueChange={setContractorId} disabled={isEdit}>
                   <SelectTrigger className="h-9 text-sm flex-1">
@@ -630,7 +629,7 @@ function AddLocationDialog({
 
             {/* Camp Name dropdown + add new */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Camp Name *</Label>
+              <Label className="text-xs font-semibold">Camp Name</Label>
               <div className="flex items-center gap-2">
                 <Select value={campName} onValueChange={setCampName}>
                   <SelectTrigger className="h-9 text-sm flex-1">
@@ -657,7 +656,7 @@ function AddLocationDialog({
 
             {/* Project Name dropdown + add new */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Project Name *</Label>
+              <Label className="text-xs font-semibold">Project Name</Label>
               <div className="flex items-center gap-2">
                 <Select value={siteId} onValueChange={setSiteId} disabled={isEdit}>
                   <SelectTrigger className="h-9 text-sm flex-1">
@@ -808,15 +807,15 @@ function QuickContractorDialog({
         </DialogHeader>
         <form onSubmit={(e) => {
           e.preventDefault()
-          if (!name.trim() || !code.trim()) { toast.error('Name and Code are required'); return }
+          if (!code.trim()) { toast.error('Code is required'); return }
           mutation.mutate({ name: name.trim(), code: code.trim().toUpperCase() })
         }} className="space-y-3 py-1">
           <div className="space-y-1.5">
-            <Label className="text-xs">Name *</Label>
+            <Label className="text-xs">Name</Label>
             <Input placeholder="Contractor name" value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Code *</Label>
+            <Label className="text-xs">Code</Label>
             <Input placeholder="e.g. ABC" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="h-9 text-sm font-mono" />
           </div>
           <DialogFooter className="pt-2">
@@ -878,15 +877,15 @@ function QuickSiteDialog({
         </DialogHeader>
         <form onSubmit={(e) => {
           e.preventDefault()
-          if (!name.trim() || !code.trim()) { toast.error('Project Name and Code are required'); return }
+          if (!code.trim()) { toast.error('Code is required'); return }
           mutation.mutate({ name: name.trim(), code: code.trim().toUpperCase(), contractorId: contractorId || undefined })
         }} className="space-y-3 py-1">
           <div className="space-y-1.5">
-            <Label className="text-xs">Project Name *</Label>
+            <Label className="text-xs">Project Name</Label>
             <Input placeholder="e.g. Tower A Construction" value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Code *</Label>
+            <Label className="text-xs">Code</Label>
             <Input placeholder="e.g. TWR-A" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="h-9 text-sm font-mono" />
           </div>
           <div className="space-y-1.5">
@@ -936,7 +935,6 @@ function QuickCampNameDialog({
         <form onSubmit={(e) => {
           e.preventDefault()
           const trimmed = name.trim()
-          if (!trimmed) { toast.error('Camp name is required'); return }
           if (existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
             toast.error('A camp with this name already exists')
             return
@@ -945,7 +943,7 @@ function QuickCampNameDialog({
           onOpenChange(false)
         }} className="space-y-3 py-1">
           <div className="space-y-1.5">
-            <Label className="text-xs">Camp Name *</Label>
+            <Label className="text-xs">Camp Name</Label>
             <Input placeholder="e.g. Block A" value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-sm" autoFocus />
           </div>
           <DialogFooter className="pt-2">

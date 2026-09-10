@@ -207,10 +207,6 @@ export default function GrievanceView() {
   })
 
   const handleCreate = () => {
-    if (!formCategory || !formDescription) {
-      toast.error('Category and Description are required')
-      return
-    }
     createMutation.mutate({
       category: formCategory,
       description: formDescription,
@@ -552,7 +548,7 @@ export default function GrievanceView() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label>Category *</Label>
+              <Label>Category</Label>
               <Select value={formCategory} onValueChange={setFormCategory}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
@@ -565,7 +561,7 @@ export default function GrievanceView() {
               </Select>
             </div>
             <div>
-              <Label>Description *</Label>
+              <Label>Description</Label>
               <Textarea className="mt-1" rows={4} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Describe the grievance in detail..." />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -319,8 +319,8 @@ function UserFormDialog({ open, onOpenChange, editingUser, contractors, sites }:
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!fullName.trim() || !username.trim()) {
-      toast.error('Please fill in all required fields')
+    if (!username.trim()) {
+      toast.error('Username is required')
       return
     }
     mutation.mutate({ fullName: fullName.trim(), username: username.trim(), role, contractorName, siteId: role === 'PMC' ? siteId : undefined })
@@ -339,15 +339,15 @@ function UserFormDialog({ open, onOpenChange, editingUser, contractors, sites }:
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name *</Label>
+            <Label htmlFor="fullName">Full Name</Label>
             <Input id="fullName" placeholder="Enter full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="username">Username *</Label>
+            <Label htmlFor="username">Username</Label>
             <Input id="username" placeholder="Enter username" value={username} onChange={(e) => setUsername(e.target.value)} disabled={isEdit} />
           </div>
           <div className="space-y-2">
-            <Label>Role *</Label>
+            <Label>Role</Label>
             <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
               <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
               <SelectContent>
@@ -371,7 +371,7 @@ function UserFormDialog({ open, onOpenChange, editingUser, contractors, sites }:
           </div>
           {showSiteSelector && (
             <div className="space-y-2">
-              <Label>Site *</Label>
+              <Label>Site</Label>
               <Select value={siteId} onValueChange={setSiteId}>
                 <SelectTrigger><SelectValue placeholder="Select site" /></SelectTrigger>
                 <SelectContent>
@@ -876,10 +876,6 @@ function WorkflowManagementTab() {
 
   const addStep = (workflowKey: string) => {
     const name = newStepInput[workflowKey]?.trim()
-    if (!name) {
-      toast.error('Please enter a step name')
-      return
-    }
     setWorkflows((prev) =>
       prev.map((w) =>
         w.key === workflowKey

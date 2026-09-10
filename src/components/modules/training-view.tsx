@@ -336,7 +336,7 @@ function AddTrainingDialog({ open, onOpenChange }: {
         trainingType: data.trainingType,
         trainingTitle: data.trainingTitle,
         dateConducted: data.dateConducted,
-        durationHours: parseFloat(data.durationHours) || 0,
+        durationHours: data.durationHours ? parseFloat(data.durationHours) : null,
         trainerName: data.trainerName || null,
         trainerCredentials: data.trainerCredentials || null,
         trainingAgency: data.trainingAgency || null,
@@ -476,7 +476,7 @@ function AddTrainingDialog({ open, onOpenChange }: {
           {/* Worker Select — multiple workers get one identical record each */}
           <div>
             <div className="flex items-baseline justify-between gap-2">
-              <Label>Workers *</Label>
+              <Label>Workers</Label>
               <span className="text-xs text-muted-foreground">
                 {selectedSiteId
                   ? `${projectWorkers.length} in this project — select all or pick individually`
@@ -504,7 +504,7 @@ function AddTrainingDialog({ open, onOpenChange }: {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Training Type *</Label>
+              <Label>Training Type</Label>
               <Controller
                 control={control}
                 name="trainingType"
@@ -525,18 +525,16 @@ function AddTrainingDialog({ open, onOpenChange }: {
               />
             </div>
             <div>
-              <Label>Training Title *</Label>
+              <Label>Training Title</Label>
               <Input
                 placeholder="e.g. Fire Safety Training"
-                {...register('trainingTitle', { required: true })}
+                {...register('trainingTitle')}
                 className="mt-1"
               />
-              {errors.trainingTitle && <p className="text-xs text-destructive mt-1">Required</p>}
             </div>
             <div>
-              <Label>Date Conducted *</Label>
-              <Input type="date" {...register('dateConducted', { required: true })} className="mt-1" />
-              {errors.dateConducted && <p className="text-xs text-destructive mt-1">Required</p>}
+              <Label>Date Conducted</Label>
+              <Input type="date" {...register('dateConducted')} className="mt-1" />
             </div>
             <div>
               <Label>Duration (hours)</Label>
@@ -779,7 +777,7 @@ export default function TrainingView() {
   const flatTrainingRecords = useMemo(
     () =>
       [...filteredRecords]
-        .sort((a, b) => b.dateConducted.localeCompare(a.dateConducted))
+        .sort((a, b) => (b.dateConducted ?? '').localeCompare(a.dateConducted ?? ''))
         .map((r) => ({
           ...r,
           'worker.fullName': r.worker?.fullName ?? '',

@@ -582,8 +582,8 @@ function ContractorFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !code.trim()) {
-      toast.error('Name and Code are required')
+    if (!code.trim()) {
+      toast.error('Code is required')
       return
     }
     mutation.mutate({
@@ -606,11 +606,11 @@ function ContractorFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 py-1">
           <div className="space-y-1.5">
-            <Label htmlFor="c-name" className="text-xs">Name *</Label>
+            <Label htmlFor="c-name" className="text-xs">Name</Label>
             <Input id="c-name" placeholder="Contractor name" value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="c-code" className="text-xs">Code *</Label>
+            <Label htmlFor="c-code" className="text-xs">Code</Label>
             <Input id="c-code" placeholder="e.g. ABC" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="h-8 text-sm font-mono" />
           </div>
           <div className="space-y-1.5">
@@ -705,8 +705,8 @@ function SiteFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !code.trim()) {
-      toast.error('Project Name and Code are required')
+    if (!code.trim()) {
+      toast.error('Code is required')
       return
     }
     mutation.mutate({
@@ -728,11 +728,11 @@ function SiteFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 py-1">
           <div className="space-y-1.5">
-            <Label htmlFor="s-name" className="text-xs">Project Name *</Label>
+            <Label htmlFor="s-name" className="text-xs">Project Name</Label>
             <Input id="s-name" placeholder="e.g. Tower A Construction" value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="s-code" className="text-xs">Code *</Label>
+            <Label htmlFor="s-code" className="text-xs">Code</Label>
             <Input id="s-code" placeholder="e.g. TWR-A" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="h-8 text-sm font-mono" />
           </div>
           <div className="space-y-1.5">
@@ -829,10 +829,6 @@ function CampFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) {
-      toast.error('Camp Name is required')
-      return
-    }
     const body = {
       name: name.trim(),
       contractorId,
@@ -854,7 +850,7 @@ function CampFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 py-1">
           <div className="space-y-1.5">
-            <Label htmlFor="lc-name" className="text-xs">Camp Name *</Label>
+            <Label htmlFor="lc-name" className="text-xs">Camp Name</Label>
             <Input id="lc-name" placeholder="e.g. Camp Block A" value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
           </div>
           <div className="space-y-1.5">

@@ -306,7 +306,6 @@ export default function VehicleDetailView() {
   }
 
   const handleAddDoc = () => {
-    if (!docType) { toast.error('Document type is required'); return }
     addDocMutation.mutate({
       docType,
       docNumber: docNumber || null,
@@ -775,7 +774,7 @@ export default function VehicleDetailView() {
           <DialogHeader><DialogTitle>Add {typeLabel} Document</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label>Document Type *</Label>
+              <Label>Document Type</Label>
               <Select value={docType} onValueChange={setDocType}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
                 <SelectContent>

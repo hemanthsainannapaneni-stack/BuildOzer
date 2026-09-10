@@ -42,13 +42,13 @@ const FITNESS_LABELS: Record<string, string> = {
 
 // ---------- schema ----------
 const fitnessSchema = z.object({
-  fitnessStatus: z.string().min(1, 'Fitness status is required'),
+  fitnessStatus: z.string(),
   fitnessValidityDate: z.string().optional(),
   totalExperienceYears: z.coerce.number().min(0).default(0),
   relevantExperienceYears: z.coerce.number().min(0).default(0),
   relevantExperienceDesc: z.string().optional(),
   priorEmployer: z.string().optional(),
-  skillLevel: z.string().min(1, 'Skill level is required'),
+  skillLevel: z.string(),
 })
 
 type FitnessFormValues = z.infer<typeof fitnessSchema>
@@ -194,7 +194,7 @@ export default function WorkerFitnessView() {
                 name="fitnessStatus"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fitness Status *</FormLabel>
+                    <FormLabel>Fitness Status</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="w-full">
@@ -330,7 +330,7 @@ export default function WorkerFitnessView() {
                 name="skillLevel"
                 render={({ field }) => (
                   <FormItem className="max-w-xs">
-                    <FormLabel>Skill Level *</FormLabel>
+                    <FormLabel>Skill Level</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="w-full">
